@@ -150,33 +150,44 @@ def permuTestMean(x, y, reps = 10**5, stat = 'mean', side = 'greater', CI =  Fal
 
 # <codecell>
 
-def stratifiedPermutationTestMean(group, condition, response, groups, conditions):
+def stratifiedPermutationTestMean(group, condition, response, groups, conditions, verbosity = 0):
     tst = 0.0
     '''
     Calculates difference in sample means between treatment conditions, within groups.
     '''
     c0 = condition == conditions[0]
     c1 = condition == conditions[1]
+    tst_gg = []
     for g in groups:
         gg = group == g
         x = gg & c0
         y = gg & c1
         if (any(x) & any(y)):
-            tst += response[x].mean() - response[y].mean()
+            tst_gg.append(response[x].mean() - response[y].mean())
+            tst += tst_gg[-1]
+    if verbosity:
+        print '\nTest statistic for each stratum:'
+        print tst_gg
     return tst
 
 
-def stratifiedPermutationTestPearsonr(group, condition, response, groups, conditions):
+def stratifiedPermutationTestPearsonr(group, condition, response, groups, conditions, verbosity = 0):
     tst = 0.0
     '''
     Calculates abs value of Pearson correlation between treatment condition and Y-Yhat (response), within groups.
     '''
     c0 = condition == conditions[0]
     c1 = condition == conditions[1]
+    tst_gg = []
     for g in groups:
         gg = (group == g)
-        tst += abs(scipy.stats.pearsonr(response[gg],condition[gg])[0])*(gg.mean())
+        tst_gg.append(abs(scipy.stats.pearsonr(response[gg],condition[gg])[0]))
+        tst += tst_gg[-1]*(gg.mean())
+    if verbosity:
+        print '\nTest statistic for each stratum:'
+        print tst_gg    
     return tst
+
 
 def permuteWithinGroups(group, condition, groups):
     permuted = condition
@@ -186,7 +197,7 @@ def permuteWithinGroups(group, condition, groups):
     return permuted
 
 
-def stratifiedPermutationTest(group, condition, response, iterations, testStatistic=stratifiedPermutationTestMean):
+def stratifiedPermutationTest(group, condition, response, iterations, testStatistic=stratifiedPermutationTestMean, verbosity = 0):
     '''
     Stratified permutation test using the sum of the differences in means between two conditions in
     each group (stratum) as the test statistic.
@@ -210,12 +221,12 @@ def stratifiedPermutationTest(group, condition, response, iterations, testStatis
     elif len(conditions) < 2:
         return 1.0, 1.0, 1.0, np.nan, None
     else:
-        tst = testStatistic(group, condition, response, groups, conditions)
+        tst = testStatistic(group, condition, response, groups, conditions, verbosity)
         dist = np.zeros(iterations)
         for i in range(iterations):
              dist[i] = testStatistic( group, 
                                       permuteWithinGroups(group, condition, groups),
-                                      response, groups, conditions
+                                      response, groups, conditions, verbosity=0
                                     )
             
     # define the conditions, then map count_nonzero over them
