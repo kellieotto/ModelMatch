@@ -45,7 +45,7 @@ def binByQuantiles(predicted, nbins = 4, verbosity = 0):
             print '\nQuantiles used for binning:'
             print quantiles
         print '\nNumber of observations assigned to each bin:'
-        print groups.order(ascending=False).value_counts()
+        print groups.value_counts().order(ascending=True)
     return groups
 
 # <codecell>
@@ -116,13 +116,13 @@ psid = pd.read_table('/Users/Kellie/Documents/ModelMatch/Data/psid_controls.txt'
 psid['dataset'] = pd.Series(['PSID']*len(psid.index))
 data = pd.concat([treated, control])
 data.index = range(len(data.index))
-print data.head()
+#print data.head()
 
 
-pred = data.RE78 + random.random(445) - (500*(data.Treated == 1))*random.random(445)
-pLeft, pRight, pBoth, tst, dist = modelMatch(predicted = pred, response = data.RE78, conditions = data.Treated,
-                                             testStatistic="pearson_r", verbosity = 2)
-print pLeft, pRight, pBoth, tst
+#pred = data.RE78 + random.random(445) - (500*(data.Treated == 1))*random.random(445)
+#pLeft, pRight, pBoth, tst, dist = modelMatch(predicted = pred, response = data.RE78, conditions = data.Treated,
+#                                             testStatistic="pearson_r", verbosity = 2)
+#print pLeft, pRight, pBoth, tst
 
 # <codecell>
 
