@@ -45,7 +45,7 @@ def binByQuantiles(predicted, nbins = 4, verbosity = 0):
             print '\nQuantiles used for binning:'
             print quantiles
         print '\nNumber of observations assigned to each bin:'
-        print groups.value_counts().order(ascending=False)
+        print groups.order(ascending=False).value_counts()
     return groups
 
 # <codecell>
@@ -99,22 +99,30 @@ def modelMatch(predicted, response, conditions, bin_method = "quantile", nbins =
 # Question: does the treatment help explain/predict RE78?
 
 # <codecell>
-if __name__ == "__main__":
-    names = ['Treated', 'Age', 'Education', 'Black', 'Hispanic', 'Married',
+
+names = ['Treated', 'Age', 'Education', 'Black', 'Hispanic', 'Married',
          'Nodegree', 'RE74', 'RE75', 'RE78']
-    treated = pd.read_table('/Users/Kellie/Documents/ModelMatch/Data/nswre74_treated.txt', sep = '\s+',
+treated = pd.read_table('/Users/Kellie/Documents/ModelMatch/Data/nswre74_treated.txt', sep = '\s+',
                         header = None, names = names)
-    control = pd.read_table('/Users/Kellie/Documents/ModelMatch/Data/nswre74_control.txt', sep='\s+', 
+treated['dataset'] = pd.Series(['treated']*len(treated.index))
+control = pd.read_table('/Users/Kellie/Documents/ModelMatch/Data/nswre74_control.txt', sep='\s+', 
                         header = None, names = names)
-    data = pd.concat([treated, control])
-    print data.head()
+control['dataset'] = pd.Series(['control']*len(control.index))
+cps = pd.read_table('/Users/Kellie/Documents/ModelMatch/Data/cps_controls.txt', sep='\s+', 
+                        header = None, names = names)
+cps['dataset'] = pd.Series(['CPS']*len(cps.index))
+psid = pd.read_table('/Users/Kellie/Documents/ModelMatch/Data/psid_controls.txt', sep='\s+', 
+                        header = None, names = names)
+psid['dataset'] = pd.Series(['PSID']*len(psid.index))
+data = pd.concat([treated, control])
+data.index = range(len(data.index))
+print data.head()
 
 
-
-    pred = data.RE78 + random.random(445) - (500*(data.Treated == 1))*random.random(445)
-    pLeft, pRight, pBoth, tst, dist = modelMatch(predicted = pred, response = data.RE78, conditions = data.Treated,
+pred = data.RE78 + random.random(445) - (500*(data.Treated == 1))*random.random(445)
+pLeft, pRight, pBoth, tst, dist = modelMatch(predicted = pred, response = data.RE78, conditions = data.Treated,
                                              testStatistic="pearson_r", verbosity = 2)
-    print pLeft, pRight, pBoth, tst
+print pLeft, pRight, pBoth, tst
 
 # <codecell>
 
