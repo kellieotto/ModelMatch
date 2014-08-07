@@ -3,9 +3,14 @@
 
 # <markdowncell>
 
-# Last edited 4 August, 2014 by KO
-# </br>
-# Implements propensity-score matching and eventually will implement balance diagnostics
+# Last edited 7 August, 2014 by KO
+# <p>
+# Implements several types of propensity-score matching, balance diagnostics for group characteristics, average treatment effect estimates, and bootstraping to estimate standard errors of ATE estimates.
+# <p>
+# Propensity scoring methods:<br>
+# <b>One-to-one:</b> Matches individuals in the treatment group to a single individual in the control group.  Variations include whether or not controls are matched with replacement, whether or not a caliper should be used, and the scale of the caliper.
+# <br>
+# <b>One-to-many:</b> Matches individuals in the treatment group to as many individuals in the control group as possible, subject to some criteria.  Variations include whether or not controls are matched with replacement, caliper methods as in one-to-one matching, and k nearest neighbor matching.
 
 # <codecell>
 
@@ -99,7 +104,6 @@ def Match(groups, propensity, caliper = 0.05, caliper_method = "propensity", rep
     # Code groups as 0 and 1
     groups = groups == groups.unique()[0]
     N = len(groups)
-#    N1 = groups.sum(); N2 = N-N1
     N1 = groups[groups == 1].index; N2 = groups[groups == 0].index
     g1, g2 = propensity[groups == 1], propensity[groups == 0]
     # Check if treatment groups got flipped - the smaller should correspond to N1/g1
@@ -110,9 +114,7 @@ def Match(groups, propensity, caliper = 0.05, caliper_method = "propensity", rep
     # Randomly permute the smaller group to get order for matching
     morder = np.random.permutation(N1)
     matches = {}
-#    matches = pd.Series(np.empty(N1))
-#    matches.index = g1.index
-#    matches[:] = np.NAN
+
     
     for m in morder:
         dist = abs(g1[m] - g2)
@@ -122,12 +124,8 @@ def Match(groups, propensity, caliper = 0.05, caliper_method = "propensity", rep
                 g2 = g2.drop(matches[m])
     return (matches)
 
-           
-    #response1, response0 = response[groups==1], response[groups==0]
-    #response1_matched = response1[matches.notnull()]
-    #response0_matched = response0[matches]
-    #response0_matched = response0_matched[response0_matched.notnull()]
-    
+
+
 def MatchMany(groups, propensity, method = "caliper", k = 1, caliper = 0.05, caliper_method = "propensity", replace = True):
     ''' 
     Implements greedy one-to-many matching on propensity scores.
@@ -145,7 +143,8 @@ def MatchMany(groups, propensity, method = "caliper", k = 1, caliper = 0.05, cal
     
     Output:
     A series containing the individuals in the control group matched to the treatment group.
-    Note that with caliper matching, not every treated individual may have a match.
+    Note that with caliper matching, not every treated individual may have a match within calipers.
+        In that case we match it to its single nearest neighbor.  The alternative is to throw out individuals with no matches, but then we'd no longer be estimating the ATT.
     '''
 
     # Check inputs
@@ -173,7 +172,6 @@ def MatchMany(groups, propensity, method = "caliper", k = 1, caliper = 0.05, cal
     # Code groups as 0 and 1
     groups = groups == groups.unique()[0]
     N = len(groups)
-#    N1 = groups.sum(); N2 = N-N1
     N1 = groups[groups == 1].index; N2 = groups[groups == 0].index
     g1, g2 = propensity[groups == 1], propensity[groups == 0]
     # Check if treatment groups got flipped - the smaller should correspond to N1/g1
@@ -184,9 +182,6 @@ def MatchMany(groups, propensity, method = "caliper", k = 1, caliper = 0.05, cal
     # Randomly permute the smaller group to get order for matching
     morder = np.random.permutation(N1)
     matches = {}
-#    matches = pd.Series(np.empty(N1))
-#    matches.index = g1.index
-#    matches[:] = np.NAN
     
     for m in morder:
         dist = abs(g1[m] - g2)
@@ -198,30 +193,35 @@ def MatchMany(groups, propensity, method = "caliper", k = 1, caliper = 0.05, cal
         keep = np.array(dist[dist<=caliper].index)
         if len(keep):
             matches[m] = keep
+        else:
+            matches[m] = [dist.argmin()]
         if not replace:
             g2 = g2.drop(matches[m])
     return (matches)
 
 
     
-def whichMatched(matches, data, many = False):
+def whichMatched(matches, data, many = False, unique = False):
     ''' 
     Simple function to convert output of Matches to DataFrame of all matched observations
     Inputs:
     matches = output of Match
     data = DataFrame of covariates
     many = Boolean indicating if matching method is one-to-one or one-to-many
+    unique = Boolean indicating if duplicated individuals (ie controls matched to more than one case) should be removed
     '''
-    #keep = matches.notnull()
-    #tr = matches.index[keep]
-    #ctrl = matches[keep]
+
     tr = matches.keys()
     if many:
         ctrl = [m for matchset in matches.values() for m in matchset]
     else:
         ctrl = matches.values()
     # need to remove duplicate rows, which may occur in matching with replacement
-    return pd.concat([data.ix[tr], data.ix[ctrl]])
+    temp = pd.concat([data.ix[tr], data.ix[ctrl]])
+    if unique == True:
+        return temp.groupby(temp.index).first()
+    else:
+        return temp
 
 # <codecell>
 
@@ -264,7 +264,7 @@ def averageTreatmentEffect(groups, response, matches):
         response1.append(response[k])
         response0.append( (response[matches[k]]).mean() )
     #response1, response0 = response[groups==1], response[groups==0]
-    return np.mean(response1) - np.mean(response0)
+    return np.mean( np.array(response1)-np.array(response0) )
 
 
 def bootstrapATE(groups, response, propensity, B = 500, caliper = 0.05, caliper_method = "propensity", replace = False):
@@ -348,13 +348,26 @@ def regressAverageTreatmentEffect(groups, response, covariates, matches=None, ve
         ctrl = [m for matchset in matches.values() for m in matchset]    
         matchcounts = pd.Series(ctrl).value_counts()
         for i in matchcounts.index:
-            weights[i] = 1.0/matchcounts[i]
+            weights[i] = matchcounts[i]
         if verbosity:
-            print weights.value_counts()
+            print weights.value_counts(), weights.shape
     X = pd.concat([groups, covariates], axis=1)
     X = sm.add_constant(X, prepend=False)
     linmodel = sm.WLS(response, X, weights = weights).fit()
     return linmodel.params[0], linmodel.bse[0]
+
+# <codecell>
+
+def Balance(groups, covariates):
+    '''
+    Computes absolute difference of means and standard error for covariates by group
+    '''
+    means = covariates.groupby(groups).mean()
+    dist = abs(means.diff()).ix[1]
+    std = covariates.groupby(groups).std()
+    n = groups.value_counts()
+    se = std.apply(lambda(s): np.sqrt(s[0]**2/n[0] + s[1]**2/n[1]))
+    return dist, se
 
 # <codecell>
 
