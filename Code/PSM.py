@@ -325,6 +325,7 @@ def bootstrapManyATE(groups, response, propensity, B = 500, method = "caliper", 
         boot_ate[i] = averageTreatmentEffect(bootdata.groups, bootdata.response, matches = pairs)
     return boot_ate.std()
 
+# <codecell>
 
 def regressAverageTreatmentEffect(groups, response, covariates, matches=None, verbosity = 0):
     '''
@@ -355,6 +356,68 @@ def regressAverageTreatmentEffect(groups, response, covariates, matches=None, ve
     X = sm.add_constant(X, prepend=False)
     linmodel = sm.WLS(response, X, weights = weights).fit()
     return linmodel.params[0], linmodel.bse[0]
+
+def bootstrapRegression(groups, response, propensity, covariates, B = 500, caliper = 0.05, caliper_method = "propensity", replace = False):
+    '''
+    Computes bootstrap standard error of the average treatment effect
+    Sample observations with replacement, within each treatment group. Then match them and compute ATE
+    Repeat B times and take standard deviation
+    
+    Inputs:
+    groups = Series containing treatment assignment. Must be 2 groups
+    response = Series containing response measurements
+    propensity = Series containing propensity scores
+    B = number of bootstrap replicates. Default is 500
+    caliper, replace = arguments to pass to Match    
+    '''
+    if len(groups.unique()) != 2:
+        raise ValueError('wrong number of groups: expected 2')
+
+    data = pd.DataFrame({'groups':groups, 'response':response, 'propensity':propensity})
+    data = pd.concat([data, covariates], axis=1)
+    boot_ate = np.empty(B)
+    for i in range(B):
+        bootdata = data.copy()
+        for g in groups.unique():
+            sample = np.random.choice(data.index[data.groups==g], sum(groups == g), replace = True)
+            newdata =(data[data.groups==g]).ix[sample]
+            newdata.index = bootdata.index[bootdata.groups == g]
+            bootdata[bootdata.groups == g] = newdata
+        pairs = Match(bootdata.groups, bootdata.propensity, caliper = caliper, caliper_method = caliper_method, replace = replace)
+        matched = whichMatched(pairs, bootdata, many = False)
+        boot_ate[i] = regressAverageTreatmentEffect(matched.groups, matched.response, matched.ix[:,3:], matches=None, verbosity = 0)[0]
+    return boot_ate.std()
+
+def bootstrapManyRegression(groups, response, propensity, covariates, B = 500, method = "caliper", k = 1, caliper = 0.05, caliper_method = "propensity", replace = True):
+    '''
+    Computes bootstrap standard error of the average treatment effect
+    Sample observations with replacement, within each treatment group. Then match them and compute ATE
+    Repeat B times and take standard deviation
+    
+    Inputs:
+    groups = Series containing treatment assignment. Must be 2 groups
+    response = Series containing response measurements
+    propensity = Series containing propensity scores
+    B = number of bootstrap replicates. Default is 500
+    caliper, replace = arguments to pass to Match    
+    '''
+    if len(groups.unique()) != 2:
+        raise ValueError('wrong number of groups: expected 2')
+
+    data = pd.DataFrame({'groups':groups, 'response':response, 'propensity':propensity})
+    data = pd.concat([data, covariates], axis=1)
+    boot_ate = np.empty(B)
+    for i in range(B):
+        bootdata = data.copy()
+        for g in groups.unique():
+            sample = np.random.choice(data.index[data.groups==g], sum(groups == g), replace = True)
+            newdata =(data[data.groups==g]).ix[sample]
+            newdata.index = bootdata.index[bootdata.groups == g]
+            bootdata[bootdata.groups == g] = newdata
+        pairs = MatchMany(bootdata.groups, bootdata.propensity, method = method, k = k, caliper = caliper, caliper_method = caliper_method, replace = replace)
+        matched = whichMatched(pairs, bootdata, many = True, unique = True)
+        boot_ate[i] = regressAverageTreatmentEffect(matched.groups, matched.response, matched.ix[:,3:], matches=pairs, verbosity = 0)[0]
+        return boot_ate.std()
 
 # <codecell>
 
