@@ -3,7 +3,7 @@
 
 # <markdowncell>
 
-# Last edited 7 August, 2014 by KO
+# Last edited 17 August, 2014 by KO
 # <p>
 # Implements several types of propensity-score matching, balance diagnostics for group characteristics, average treatment effect estimates, and bootstraping to estimate standard errors of ATE estimates.
 # <p>
@@ -17,7 +17,7 @@
 import math
 import numpy as np
 import scipy
-from scipy.stats import binom, hypergeom
+from scipy.stats import binom, hypergeom, gaussian_kde
 import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.linear_model import LogisticRegression
@@ -32,22 +32,18 @@ import statsmodels.api as sm
 
 # <codecell>
 
-def computePropensityScore(predictors, groups):
+def computePropensityScore(formula, data, verbosity=1):
     '''
     Compute propensity scores 
     
     Inputs:
-    predictors = DataFrame containing covariates
-    groups = Series containing treatment assignment. Indices should match those of predictors.
-        Must be 2 groups
-
+    formula = string of the form 'Treatment~ covariate1 + covariate2 + ...', where these are column names in data
+    data = matrix-like object with columns corresponding to terms in the formula
+    verbosity = whether or not to print glm summary
     
     dependencies: LogisticRegression from sklearn.linear_model
                   statsmodels as sm
     '''
-    
-    if len(groups.unique()) != 2:
-        raise ValueError('wrong number of groups: expected 2')
         
     ####### Using LogisticRegression from sklearn.linear_model    
     #propensity = LogisticRegression()
@@ -55,9 +51,14 @@ def computePropensityScore(predictors, groups):
     #return propensity.predict_proba(predictors)[:,1]
     
     ####### Using sm.GLM
-    predictors = sm.add_constant(predictors, prepend=False)
-    glm_binom = sm.GLM(groups, predictors, family=sm.families.Binomial())
+    #predictors = sm.add_constant(predictors, prepend=False)
+    #glm_binom = sm.GLM(groups, predictors, family=sm.families.Binomial())
+
+    ####### Using sm.formula.glm with formula call
+    glm_binom = sm.formula.glm(formula = formula, data = data, family = sm.families.Binomial())
     res = glm_binom.fit()
+    if verbosity:
+        print res.summary()
     return res.fittedvalues
 
 # <codecell>
@@ -225,30 +226,44 @@ def whichMatched(matches, data, many = False, unique = False):
 
 # <codecell>
 
-#def averageTreatmentEffect(groups, response, matches):
-#    '''
-#    This works for one-to-one matching
-#    
-#    Inputs:
-#    groups = Series containing treatment assignment. Must be 2 groups
-#    response = Series containing response measurements. Indices should match those of groups.
-#    matches = matched pairs returned from Match
-#    '''
-#    if len(groups.unique()) != 2:
-#        raise ValueError('wrong number of groups: expected 2')
-#    
-#    groups = (groups == groups.unique()[0])            
-#    response1, response0 = response[groups==1], response[groups==0]
-#    response1_matched = response1[matches.notnull()]
-#    response0_matched = response0[matches]
-#    response0_matched = response0_matched[response0_matched.notnull()]
-#    return response1.mean() - response0_matched.mean()
+def getWeights(matches, groups):
+    ''' computes weights for mean & regression according to how many times a control was matched in one-many matching'''
+    
+    ctrl = [m for matchset in matches.values() for m in matchset]
+    weights = groups.copy()
+    for c in ctrl:
+        weights[c] += 1
+    return weights
+    
+    
+def whichMatched(matches, data, many = False, unique = False):
+    ''' 
+    Simple function to convert output of Matches to DataFrame of all matched observations
+    Inputs:
+    matches = output of Match
+    data = DataFrame of covariates
+    many = Boolean indicating if matching method is one-to-one or one-to-many
+    unique = Boolean indicating if duplicated individuals (ie controls matched to more than one case) should be removed
+    '''
+
+    tr = matches.keys()
+    if many:
+        ctrl = [m for matchset in matches.values() for m in matchset]
+    else:
+        ctrl = matches.values()
+    # need to remove duplicate rows, which may occur in matching with replacement
+    temp = pd.concat([data.ix[tr], data.ix[ctrl]])
+    if unique == True:
+        return temp.groupby(temp.index).first()
+    else:
+        return temp
+
+# <codecell>
 
 def averageTreatmentEffect(groups, response, matches):
     '''
-    This works for one-to-one matching.  The data passed in should already have unmatched individuals (and duplicates?) removed.
-    Weights argument will be added later for one-many matching
-    
+    The data passed in should already have unmatched individuals and duplicates removed.
+
     Inputs:
     groups = Series containing treatment assignment. Must be 2 groups
     response = Series containing response measurements. Indices should match those of groups.
@@ -262,70 +277,9 @@ def averageTreatmentEffect(groups, response, matches):
     response1 = []; response0 = []
     for k in matches.keys():
         response1.append(response[k])
-        response0.append( (response[matches[k]]).mean() )
-    #response1, response0 = response[groups==1], response[groups==0]
+        response0.append( (response[matches[k]]).mean() )   # Take mean response of controls matched to treated individual k
     return np.mean( np.array(response1)-np.array(response0) )
 
-
-def bootstrapATE(groups, response, propensity, B = 500, caliper = 0.05, caliper_method = "propensity", replace = False):
-    '''
-    Computes bootstrap standard error of the average treatment effect
-    Sample observations with replacement, within each treatment group. Then match them and compute ATE
-    Repeat B times and take standard deviation
-    
-    Inputs:
-    groups = Series containing treatment assignment. Must be 2 groups
-    response = Series containing response measurements
-    propensity = Series containing propensity scores
-    B = number of bootstrap replicates. Default is 500
-    caliper, replace = arguments to pass to Match    
-    '''
-    if len(groups.unique()) != 2:
-        raise ValueError('wrong number of groups: expected 2')
-
-    data = pd.DataFrame({'groups':groups, 'response':response, 'propensity':propensity})
-    boot_ate = np.empty(B)
-    for i in range(B):
-        bootdata = data.copy()
-        for g in groups.unique():
-            sample = np.random.choice(data.index[data.groups==g], sum(groups == g), replace = True)
-            newdata =(data[data.groups==g]).ix[sample]
-            newdata.index = bootdata.index[bootdata.groups == g]
-            bootdata[bootdata.groups == g] = newdata
-        pairs = Match(bootdata.groups, bootdata.propensity, caliper = caliper, caliper_method = caliper_method, replace = replace)
-        boot_ate[i] = averageTreatmentEffect(bootdata.groups, bootdata.response, matches = pairs)
-    return boot_ate.std()
-
-def bootstrapManyATE(groups, response, propensity, B = 500, method = "caliper", k = 1, caliper = 0.05, caliper_method = "propensity", replace = True):
-    '''
-    Computes bootstrap standard error of the average treatment effect
-    Sample observations with replacement, within each treatment group. Then match them and compute ATE
-    Repeat B times and take standard deviation
-    
-    Inputs:
-    groups = Series containing treatment assignment. Must be 2 groups
-    response = Series containing response measurements
-    propensity = Series containing propensity scores
-    B = number of bootstrap replicates. Default is 500
-    caliper, replace = arguments to pass to Match    
-    '''
-    if len(groups.unique()) != 2:
-        raise ValueError('wrong number of groups: expected 2')
-
-    data = pd.DataFrame({'groups':groups, 'response':response, 'propensity':propensity})
-    boot_ate = np.empty(B)
-    for i in range(B):
-        bootdata = data.copy()
-        for g in groups.unique():
-            sample = np.random.choice(data.index[data.groups==g], sum(groups == g), replace = True)
-            newdata =(data[data.groups==g]).ix[sample]
-            newdata.index = bootdata.index[bootdata.groups == g]
-            bootdata[bootdata.groups == g] = newdata
-        pairs = MatchMany(bootdata.groups, bootdata.propensity, method = method, k = k, caliper = caliper, caliper_method = caliper_method, replace = replace)
-        boot_ate[i] = averageTreatmentEffect(bootdata.groups, bootdata.response, matches = pairs)
-    return boot_ate.std()
-
-# <codecell>
 
 def regressAverageTreatmentEffect(groups, response, covariates, matches=None, verbosity = 0):
     '''
@@ -357,7 +311,21 @@ def regressAverageTreatmentEffect(groups, response, covariates, matches=None, ve
     linmodel = sm.WLS(response, X, weights = weights).fit()
     return linmodel.params[0], linmodel.bse[0]
 
-def bootstrapRegression(groups, response, propensity, covariates, B = 500, caliper = 0.05, caliper_method = "propensity", replace = False):
+# <codecell>
+
+
+def sampleWithinGroups(groups, data):
+    '''To use in bootstrapping functions.  Sample with replacement from each group, return bootstrap sample dataframe'''
+    bootdata = pd.DataFrame()
+    for g in groups.unique():
+        sample = np.random.choice(data.index[data.groups==g], sum(groups == g), replace = True)
+        newdata =(data[data.groups==g]).ix[sample]
+        bootdata = bootdata.append(newdata)
+    bootdata.index = range(len(groups))
+    return bootdata
+
+
+def bootstrapATE(groups, response, propensity, many=True, B = 500, method = "caliper", k = 1, caliper = 0.05, caliper_method = "propensity", replace = False):
     '''
     Computes bootstrap standard error of the average treatment effect
     Sample observations with replacement, within each treatment group. Then match them and compute ATE
@@ -367,28 +335,27 @@ def bootstrapRegression(groups, response, propensity, covariates, B = 500, calip
     groups = Series containing treatment assignment. Must be 2 groups
     response = Series containing response measurements
     propensity = Series containing propensity scores
+    many = Boolean: are we using one-many matching?
     B = number of bootstrap replicates. Default is 500
-    caliper, replace = arguments to pass to Match    
+    caliper, caliper_method, replace = arguments to pass to Match or MatchMany
+    method, k = arguments to pass to MatchMany
     '''
     if len(groups.unique()) != 2:
         raise ValueError('wrong number of groups: expected 2')
 
     data = pd.DataFrame({'groups':groups, 'response':response, 'propensity':propensity})
-    data = pd.concat([data, covariates], axis=1)
     boot_ate = np.empty(B)
     for i in range(B):
-        bootdata = data.copy()
-        for g in groups.unique():
-            sample = np.random.choice(data.index[data.groups==g], sum(groups == g), replace = True)
-            newdata =(data[data.groups==g]).ix[sample]
-            newdata.index = bootdata.index[bootdata.groups == g]
-            bootdata[bootdata.groups == g] = newdata
-        pairs = Match(bootdata.groups, bootdata.propensity, caliper = caliper, caliper_method = caliper_method, replace = replace)
-        matched = whichMatched(pairs, bootdata, many = False)
-        boot_ate[i] = regressAverageTreatmentEffect(matched.groups, matched.response, matched.ix[:,3:], matches=None, verbosity = 0)[0]
+        bootdata = sampleWithinGroups(groups, data)
+        if many:
+            pairs = MatchMany(bootdata.groups, bootdata.propensity, method = method, k = k, caliper = caliper, caliper_method = caliper_method, replace = replace)
+        else:
+            pairs = Match(bootdata.groups, bootdata.propensity, caliper = caliper, caliper_method = caliper_method, replace = replace)
+        boot_ate[i] = averageTreatmentEffect(bootdata.groups, bootdata.response, matches = pairs)
     return boot_ate.std()
 
-def bootstrapManyRegression(groups, response, propensity, covariates, B = 500, method = "caliper", k = 1, caliper = 0.05, caliper_method = "propensity", replace = True):
+
+def bootstrapRegression(groups, response, propensity, covariates, many = True, B = 500, method = "caliper", k = 1, caliper = 0.05, caliper_method = "propensity", replace = False):
     '''
     Computes bootstrap standard error of the average treatment effect
     Sample observations with replacement, within each treatment group. Then match them and compute ATE
@@ -398,8 +365,11 @@ def bootstrapManyRegression(groups, response, propensity, covariates, B = 500, m
     groups = Series containing treatment assignment. Must be 2 groups
     response = Series containing response measurements
     propensity = Series containing propensity scores
+    covariates = DataFrame containing covariates to use in regression
+    many = Boolean: are we using one-many matching?
     B = number of bootstrap replicates. Default is 500
-    caliper, replace = arguments to pass to Match    
+    caliper, caliper_method, replace = arguments to pass to Match or MatchMany
+    method, k = arguments to pass to MatchMany
     '''
     if len(groups.unique()) != 2:
         raise ValueError('wrong number of groups: expected 2')
@@ -408,16 +378,16 @@ def bootstrapManyRegression(groups, response, propensity, covariates, B = 500, m
     data = pd.concat([data, covariates], axis=1)
     boot_ate = np.empty(B)
     for i in range(B):
-        bootdata = data.copy()
-        for g in groups.unique():
-            sample = np.random.choice(data.index[data.groups==g], sum(groups == g), replace = True)
-            newdata =(data[data.groups==g]).ix[sample]
-            newdata.index = bootdata.index[bootdata.groups == g]
-            bootdata[bootdata.groups == g] = newdata
-        pairs = MatchMany(bootdata.groups, bootdata.propensity, method = method, k = k, caliper = caliper, caliper_method = caliper_method, replace = replace)
-        matched = whichMatched(pairs, bootdata, many = True, unique = True)
-        boot_ate[i] = regressAverageTreatmentEffect(matched.groups, matched.response, matched.ix[:,3:], matches=pairs, verbosity = 0)[0]
-        return boot_ate.std()
+        bootdata = sampleWithinGroups(groups, data)
+        if many:
+            pairs = MatchMany(bootdata.groups, bootdata.propensity, method = method, k = k, caliper = caliper, caliper_method = caliper_method, replace = replace)
+            matched = whichMatched(pairs, bootdata, many = True, unique = True)
+            boot_ate[i] = regressAverageTreatmentEffect(matched.groups, matched.response, matched.ix[:,3:], matches=pairs, verbosity = 0)[0]
+        else:
+            pairs = Match(bootdata.groups, bootdata.propensity, caliper = caliper, caliper_method = caliper_method, replace = replace)
+            matched = whichMatched(pairs, bootdata, many = False)
+            boot_ate[i] = regressAverageTreatmentEffect(matched.groups, matched.response, matched.ix[:,3:], matches=None, verbosity = 0)[0]
+    return boot_ate.std()
 
 # <codecell>
 
@@ -431,6 +401,48 @@ def Balance(groups, covariates):
     n = groups.value_counts()
     se = std.apply(lambda(s): np.sqrt(s[0]**2/n[0] + s[1]**2/n[1]))
     return dist, se
+
+def plotScores(groups, propensity, matches, many=True):
+    '''
+    Plot density of propensity scores for each group before and after matching
+    
+    Inputs: groups = treatment assignment, pre-matching
+            propensity = propensity scores, pre-matching
+            matches = output of Match or MatchMany
+            many = indicator - True if one-many matching was done (default is True), otherwise False
+    '''
+    pre = pd.DataFrame({'groups':groups, 'propensity':propensity})    
+    post = whichMatched(matches, pre, many = many, unique = False)
+    
+    plt.figure(1)
+    plt.subplot(121)
+    density0 = scipy.stats.gaussian_kde(pre.propensity[pre.groups==0])
+    density1 = scipy.stats.gaussian_kde(pre.propensity[pre.groups==1])
+    xs = np.linspace(0,1,1000)
+    #density0.covariance_factor = lambda : 0.5
+    #density0._compute_covariance()
+    #density1.covariance_factor = lambda : 0.5
+    #density1._compute_covariance()
+    plt.plot(xs,density0(xs),color='black')
+    plt.fill_between(xs,density1(xs),color='gray')
+    plt.title('Before Matching')
+    plt.xlabel('Propensity Score')
+    plt.ylabel('Density')
+    
+    plt.subplot(122)
+    density0_post = scipy.stats.gaussian_kde(post.propensity[post.groups==0])
+    density1_post = scipy.stats.gaussian_kde(post.propensity[post.groups==1])
+    xs = np.linspace(0,1,1000)
+    #density0.covariance_factor = lambda : 0.5
+    #density0._compute_covariance()
+    #density1.covariance_factor = lambda : 0.5
+    #density1._compute_covariance()
+    plt.plot(xs,density0_post(xs),color='black')
+    plt.fill_between(xs,density1_post(xs),color='gray')
+    plt.title('After Matching')
+    plt.xlabel('Propensity Score')
+    plt.ylabel('Density')
+    plt.show()
 
 # <codecell>
 
