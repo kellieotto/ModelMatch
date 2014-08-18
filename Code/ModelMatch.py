@@ -16,6 +16,7 @@ from scipy import stats
 import pandas as pd
 import matplotlib.pyplot as plt
 from permute import *
+import sklearn.ensemble
 
 # <codecell>
 
@@ -36,7 +37,7 @@ def binByQuantiles(predicted, nbins = 4, verbosity = 0):
     n = len(predicted)
     q = (np.arange(nbins+1))*100.0/nbins
     quantiles = scipy.stats.scoreatpercentile(predicted, q)
-    groups = pd.Series(np.zeros(n), index = predicted.index)
+    groups = pd.Series(np.zeros(n))
     # potential problem - how to handle ties in the quantiles?
     for i in np.arange(nbins)+1:
         groups[predicted>quantiles[i]] += 1
@@ -92,41 +93,4 @@ def modelMatch(predicted, response, conditions, bin_method = "quantile", nbins =
     groups = stratify(predicted)
     pLeft, pRight, pBoth, tst, dist = tst(groups)
     return pLeft, pRight, pBoth, tst, dist
-
-# <markdowncell>
-
-# Example code for how to call the functions.
-# Question: does the treatment help explain/predict RE78?
-
-# <codecell>
-
-names = ['Treated', 'Age', 'Education', 'Black', 'Hispanic', 'Married',
-         'Nodegree', 'RE74', 'RE75', 'RE78']
-treated = pd.read_table('/Users/Kellie/Documents/ModelMatch/Data/nswre74_treated.txt', sep = '\s+',
-                        header = None, names = names)
-treated['dataset'] = pd.Series(['treated']*len(treated.index))
-control = pd.read_table('/Users/Kellie/Documents/ModelMatch/Data/nswre74_control.txt', sep='\s+', 
-                        header = None, names = names)
-control['dataset'] = pd.Series(['control']*len(control.index))
-cps = pd.read_table('/Users/Kellie/Documents/ModelMatch/Data/cps_controls.txt', sep='\s+', 
-                        header = None, names = names)
-cps['dataset'] = pd.Series(['CPS']*len(cps.index))
-psid = pd.read_table('/Users/Kellie/Documents/ModelMatch/Data/psid_controls.txt', sep='\s+', 
-                        header = None, names = names)
-psid['dataset'] = pd.Series(['PSID']*len(psid.index))
-data = pd.concat([treated, control])
-data.index = range(len(data.index))
-#print data.head()
-
-
-#pred = data.RE78 + random.random(445) - (500*(data.Treated == 1))*random.random(445)
-#pLeft, pRight, pBoth, tst, dist = modelMatch(predicted = pred, response = data.RE78, conditions = data.Treated,
-#                                             testStatistic="pearson_r", verbosity = 2)
-#print pLeft, pRight, pBoth, tst
-
-# <codecell>
-
-
-# <codecell>
-
 

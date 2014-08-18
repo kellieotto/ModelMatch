@@ -3,7 +3,7 @@
 
 # <markdowncell>
 
-# Last modified 21 July 2014 by KO
+# Last modified 17 August 2014 by KO
 # 
 # This notebook implements a variety of permutation tests, including stratified permutation tests.
 # It also implements exact confidence intervals for binomial p and hypergeometric parameters, by inverting tests.
@@ -153,7 +153,7 @@ def permuTestMean(x, y, reps = 10**5, stat = 'mean', side = 'greater', CI =  Fal
 def stratifiedPermutationTestMean(group, condition, response, groups, conditions, verbosity = 0):
     tst = 0.0
     '''
-    Calculates difference in sample means between treatment conditions, within groups.
+    Calculates absolute value of difference in sample means between treatment conditions, within groups.
     '''
     c0 = condition == conditions[0]
     c1 = condition == conditions[1]
@@ -163,7 +163,7 @@ def stratifiedPermutationTestMean(group, condition, response, groups, conditions
         x = gg & c0
         y = gg & c1
         if (any(x) & any(y)):
-            tst_gg.append(response[x].mean() - response[y].mean())
+            tst_gg.append(abs(response[x].mean() - response[y].mean()))
             tst += tst_gg[-1]
     if verbosity:
         print '\nTest statistic for each stratum:'
