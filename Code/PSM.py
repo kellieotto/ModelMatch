@@ -278,7 +278,7 @@ def averageTreatmentEffect(groups, response, matches):
     for k in matches.keys():
         response1.append(response[k])
         response0.append( (response[matches[k]]).mean() )   # Take mean response of controls matched to treated individual k
-    return np.mean( np.array(response1)-np.array(response0) )
+    return np.array(response1).mean() - np.array(response0).mean()
 
 
 def regressAverageTreatmentEffect(groups, response, covariates, matches=None, verbosity = 0):

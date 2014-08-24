@@ -20,17 +20,18 @@ import sklearn.ensemble
 
 # <codecell>
 
-def binByQuantiles(predicted, nbins = 4, verbosity = 0):
+def binByQuantiles(predicted, treatment, nbins = 4, verbosity = 0):
     ''' 
     Stratify observations by their predicted response values.
     Use the quantiles of the sample to return nbins groups, each containing
     approximately the same number of individuals.
     
     Inputs: 
-    predicted = pandas series containing model-predicted response
+    predicted = pandas Series containing model-predicted response
+    treatment = pandas Series containing treatment values
     nbins = number of groups
     verbosity = flag for printing and debugging. 
-        0 for no printed output, 1 for some verbosity, 2 for maximum verbosity
+        0 for no printed output, 1 for regular verbosity, 2 for verbosity when treatment is binary
     
     Dependencies: numpy (as np), scipy.stats, pandas as pd
     '''
@@ -42,11 +43,12 @@ def binByQuantiles(predicted, nbins = 4, verbosity = 0):
     for i in np.arange(nbins)+1:
         groups[predicted>quantiles[i]] += 1
     if verbosity>0:
-        if verbosity == 2:
-            print '\nQuantiles used for binning:'
-            print quantiles
+        print 'Quantiles used for binning: ', quantiles
         print '\nNumber of observations assigned to each bin:'
-        print groups.value_counts().order(ascending=True)
+        if verbosity == 2: 
+            print pd.crosstab(groups,treatment,rownames=['Bin'],colnames=['Treatment Group'])
+        else:
+            print groups.value_counts()
     return groups
 
 # <codecell>
@@ -74,7 +76,7 @@ def modelMatch(predicted, response, conditions, bin_method = "quantile", nbins =
     dist = (empirical) permutation distribution of test statistic
     '''
     binning = dict( \
-             quantile = lambda u: binByQuantiles(u, nbins = nbins, verbosity = verbosity)
+             quantile = lambda u: binByQuantiles(u, treatment = conditions, nbins = nbins, verbosity = verbosity)
             )
     try:
         stratify = binning[bin_method]
@@ -93,4 +95,9 @@ def modelMatch(predicted, response, conditions, bin_method = "quantile", nbins =
     groups = stratify(predicted)
     pLeft, pRight, pBoth, tst, dist = tst(groups)
     return pLeft, pRight, pBoth, tst, dist
+
+# <markdowncell>
+
+
+
 
