@@ -1,6 +1,6 @@
 ### Monte Carlo simulation 1
 ### Based on JH Ebal simulations
-### by Kellie Ottoboni 10/29/2014
+### by Kellie Ottoboni 11/6/2014
 ### Design 1: strong separation of treatment and control groups, linear outcome
 ### Selection model: D = ind(X1 + 2X2 - 2X3 - X4 - 0.5X5 + X6 + epsilon > 0)
 ### where epsilon ~ N(0, 30)
@@ -17,6 +17,8 @@ library(ebal)
 library(devtools)
 install_github("ModelMatch", username = "kellieotto", subdir = "ModelMatch")
 library(ModelMatch)
+library(glmnet)
+library(ipred)
 
 ## Setup
 sims <- 100
@@ -33,13 +35,12 @@ Sigma[3,2] <- Sigma[2,3] <- covars[3]
 
 # pick target sample size
 #nsim <- 1500
-nsim <- 600
-#nsim  <- 300
-big.est.store <- big.para.store <- list()
+#nsim <- 600
+nsim  <- 300
 tr <- nsim/2; tr
 co <- nsim - tr; co
-para  <- c("FracCtoT","N","tr","co","corY.PS","corW.PS","corW.MM","corPS.PS1","corPS.PS2","corPS.PS3")
-est    <- c("RAW","MM","MMTest","GM","PS1","PS2","PS3","PSW1","PSW2","PSW3","EB")
+para  <- c("FracCtoT","N","tr","co","corY.PS","corW.PS","corW.MM1","corW.MM2","corW.MM3","corPS.PS1","corPS.PS2","corPS.PS3")
+est    <- c("RAW","MM1","MM1ATT","MM2","MM2ATT","MM3","MM3ATT","PS1","PS2","PS3","PSW1","PSW2","PSW3","EB","GM")
 
 # expand storage for three different outcomes
 est.store <- para.store <- list()
@@ -94,7 +95,7 @@ for(i in 1:sims){ # start simulations
   
   # outcome: treatment effect is zero
   u  <- rnorm(nrow(X))
-  # ouctome 1 (linear)
+  # outcome 1 (linear)
   Y1 <- X1 + X2 + X3 - X4 + X5 + X6 + u
   # outcome 2 (medium nonlinear)
   Y2 <- X1 + X2 + 0.2*X3*X4 - sqrt(X5) + u
@@ -111,17 +112,36 @@ for(i in 1:sims){ # start simulations
   }
   
   
+  # Model matching predictions
+  mmxlist <- mmlist <- list()
+  for(k in 1:3){
+    Y <- Y.mat[,k]
+    # Model 1: simple linear regression on all covariates
+    model.MM1 <- lm(Y~X1+X2+X3+X4+X5+X6)
+    mmxlist[[1]] <- model.MM1$fitted
+    # Model 2: regularized linear regression on all covariates
+    MM2.temp <- cv.glmnet(x=X, y=Y, family = "gaussian")
+    model.MM2 <- glmnet(x=X, y=Y, family = "gaussian", lambda = MM2.temp$lambda.1se)
+    mmxlist[[2]] <- predict(model.MM2, X)
+    # Model 3: bagged regression trees, default 25 bags
+    model.MM3 <- bagging(Y~., data = data.frame(Y,X), coob=TRUE)
+    mmxlist[[3]] <- predict(model.MM3, X)
+    # combine
+    mmlist[[k]] <- mmxlist
+    }
   
   # model-based matching
   for(k in 1:3){
     Y <- Y.mat[,k]
-    mm <- lm(Y~X)
-    pred <- mm$fitted; resid <- mm$resid
-    pairs <- Matches(W, pred)
-    mm_res <- permu_test_mean(pairs, pred, Y, iters=1000)
-    est.store[[k]][i,"MM"] <- mm_res[[1]]/tr
-    est.store[[k]][i,"MMTest"] <- ifelse(mm_res[[3]][3]<= 0.05, est.store[[k]][i,"MM"], 0)
-  }
+    for(p in 1:3){
+      pred <- mmlist[[k]][[p]]
+      pairs <- Matches(W, pred)
+      pairs.df <- data.frame(do.call(rbind,pairs))
+      w0 <- 1/table(pairs.df[pairs.df$tr == 0,1]); Y0 <- Y[unique(pairs.df[pairs.df$tr==0,1])]
+      mm_res <- permu_test_mean(pairs, pred, Y, iters=1000)
+      est.store[[k]][i,paste("MM", p, sep="")] <- mm_res[[1]]/tr
+      est.store[[k]][i,paste("MM", p, "ATT", sep="")] <- mean(Y[W==1]) - sum(Y0*w0)/sum(w0)
+  }}
   
   # entropy balancing
   for(k in 1:3){
@@ -170,7 +190,9 @@ for(i in 1:sims){ # start simulations
     para.store[[k]][i,"FracCtoT"] <- sum(W==0)/sum(W==1)
     para.store[[k]][i,"corY.PS"] <- cor(Y,PS.true)
     para.store[[k]][i,"corW.PS"] <- cor(W,PS.true)
-    para.store[[k]][i,"corW.MM"] <- cor(W, pred)
+    para.store[[k]][i,"corW.MM1"] <- cor(W, mmlist[[k]][[1]])
+    para.store[[k]][i,"corW.MM2"] <- cor(W, mmlist[[k]][[2]])
+    para.store[[k]][i,"corW.MM3"] <- cor(W, mmlist[[k]][[3]])
     para.store[[k]][i,"corPS.PS1"] <- cor(pslist[[1]]$fitted,PS.true)
     para.store[[k]][i,"corPS.PS2"] <- cor(pslist[[2]]$fitted,PS.true)
     para.store[[k]][i,"corPS.PS3"] <- cor(pslist[[3]]$fitted,PS.true)
