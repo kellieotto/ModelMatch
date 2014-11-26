@@ -2,7 +2,7 @@
 
 
 
-### Alt hypothesis: data from when the law was in effect comes from a different (mean) distribution than 
+### Alt hypothesis: data from when the law was in effect comes from a different (mean) distribution than
 ###   			from when the law was not in effect.  Do a matched pair permutation test
 
 
@@ -59,7 +59,23 @@ permu_test_mean <- function(groups, prediction, response, iters=1000){
   perm_dist <- replicate(iters, {perm_groups <- permute_within_groups(groups)
                                  sum(within_group_mean(perm_groups, prediction, response))})
   pval <- c("p_upper" = sum(perm_dist >= truth)/iters,
-            "p_lower" = sum(perm_dist <= truth)/iters,	# 
+            "p_lower" = sum(perm_dist <= truth)/iters,	#
             "twosided" = sum(abs(perm_dist) >= abs(truth))/iters)	# Alt hypoth: residual mean after law effected different from residual mean for pre-law
   return(list("diff_means"=truth, "perm_distribution"=perm_dist, "pvalue"=pval))
+}
+
+permu_CI_mean <- function(perm_distribution, side = "both", alpha=0.05){
+  ### Invert the stratified permutation test to get a 1-alpha confidence interval for the difference in mean residuals
+  ### Input: perm_distribution = Permutation distribution for the difference in mean resid, output from permu_test_mean
+  ###        side              = Type of interval, either "both", "upper", or "lower". Default is "both"
+  ###        alpha             = Significance level
+  n <- length(perm_distribution)
+  if(side == "both"){
+    quantiles <- c(floor(alpha/2*n), ceiling((1-alpha/2)*n))
+  }else{if(side == "lower"){
+    quantiles <- floor(alpha*n)
+  }else{
+    quantiles <- ceiling((1-alpha)*n)
+  }}
+  return(sort(perm_distribution)[quantiles])
 }
