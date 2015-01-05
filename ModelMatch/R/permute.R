@@ -61,21 +61,43 @@ permu_test_mean <- function(groups, prediction, response, iters=1000){
   pval <- c("p_upper" = sum(perm_dist >= truth)/iters,
             "p_lower" = sum(perm_dist <= truth)/iters,	#
             "twosided" = sum(abs(perm_dist) >= abs(truth))/iters)	# Alt hypoth: residual mean after law effected different from residual mean for pre-law
-  return(list("diff_means"=truth, "perm_distribution"=perm_dist, "pvalue"=pval))
+  return(list("diff_means"=truth/length(groups), "perm_distribution"=perm_dist, "pvalue"=pval))
 }
 
-permu_CI_mean <- function(perm_distribution, side = "both", alpha=0.05){
+
+permu_CI_mean <- function(groups, prediction, response, side = "both", alpha=0.05, iters=1000, precision = 50, verbose = FALSE){
   ### Invert the stratified permutation test to get a 1-alpha confidence interval for the difference in mean residuals
-  ### Input: perm_distribution = Permutation distribution for the difference in mean resid, output from permu_test_mean
-  ###        side              = Type of interval, either "both", "upper", or "lower". Default is "both"
-  ###        alpha             = Significance level
-  n <- length(perm_distribution)
+  ### Input: groups     = list from Matches (or from stratification function)
+  ###        prediction = vector of predictions from the model
+  ###        response   = vector of observed responses for each individual
+  ###        side       = Type of interval, either "both", "upper", or "lower". Default is "both"
+  ###        alpha      = Significance level
+  ###        iters      = number of permutations (default 1000)
+  ###        precision  = rate at which to increase the confidence bounds under consideration.
+  ###                     higher = slower run time but more precise. Default is 50 (relative to estimated diff in means)
+  ###       verbose     = indicator whether to print p-values associated with each confidence interval endpoint considered.
   if(side == "both"){
-    quantiles <- c(floor(alpha/2*n), ceiling((1-alpha/2)*n))
-  }else{if(side == "lower"){
-    quantiles <- floor(alpha*n)
-  }else{
-    quantiles <- ceiling((1-alpha)*n)
-  }}
-  return(sort(perm_distribution)[quantiles])
+    alpha <- alpha/2
+    d1 <- permu_CI_mean(groups = groups, prediction = prediction, response = response, side = "lower", alpha = alpha, iters = iters, precision = precision, verbose = verbose)
+    d2 <- permu_CI_mean(groups = groups, prediction = prediction, response = response, side = "upper", alpha = alpha, iters = iters, precision = precision, verbose = verbose)
+    return(c(d1,d2))
+  }
+  pvalue_side <- which(c("lower", "upper", "both") == side)
+
+  # initialize
+  tr <- sapply(strata, function(x) x[x[,"tr"] == 1,"stratum"])
+  response_alt <- response
+  res <- permu_test_mean(groups, prediction, response, iters = iters)
+  d_true <- res$diff_means; d <- res$diff_means; incr <- d/precision
+  shift_pval <- rep(1,3)
+
+  # Conduct permutation test for H0: shift = d until we reject H0
+  while(shift_pval[pvalue_side] > alpha){
+    d <- ifelse(side == "upper", d+incr*sign(incr), d+incr)
+    response_alt[tr] <- response[tr] + d
+    res <- permu_test_mean(groups, prediction, response_alt, iters = iters)
+    shift_pval <- res$pvalue
+    if(verbose){print(d); print(shift_pval)}
+  }
+  return(d)
 }

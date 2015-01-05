@@ -63,7 +63,7 @@ for(i in 1:sims){ # start simulations
   e <- rnorm(n,mean=0,sd=sqrt(30))
   xb <- X1 + 2*X2 - 2*X3  - X4 - .5*X5 + X6 +  e
   W  <- as.numeric(xb>0)
-  
+
   # sample to target sizes
   sim.dat <- data.frame(W,X1,X2,X3,X4,X5,X6)
   tr.keep <- sample(which(sim.dat$W==1),tr,replace=F)
@@ -72,11 +72,11 @@ for(i in 1:sims){ # start simulations
   W <- sim.dat[,"W"]
   X <- as.matrix(sim.dat[,names(sim.dat)[-1]])
   X1 <- X[,"X1"]; X2 <- X[,"X2"]; X3 <- X[,"X3"]; X4 <- X[,"X4"]; X5 <- X[,"X5"];X6 <- X[,"X6"]
-  
+
   # true linear propensity scores
   PS.out  <- glm(W~X,family=binomial(link = "probit"))
   PS.true <- PS.out$fitted
-  
+
   # propensity score specification formulae
   psxlist <- pslist <- list()
   # ps 1
@@ -92,7 +92,7 @@ for(i in 1:sims){ # start simulations
   for(p in 1:3){
     pslist[[p]] <- glm(W~psxlist[[p]],family=binomial(link = "probit"))
   }
-  
+
   # outcome: treatment effect is zero
   u  <- rnorm(nrow(X))
   # outcome 1 (linear)
@@ -101,17 +101,17 @@ for(i in 1:sims){ # start simulations
   Y2 <- X1 + X2 + 0.2*X3*X4 - sqrt(X5) + u
   # outcome 3 (strongly nonlinear)
   Y3 <- (X1 + X2 + X5)^2 + u
-  # combine 
+  # combine
   Y.mat <- cbind(Y1,Y2,Y3)
-  
-  
+
+
   # raw outcome
   for(k in 1:3){
     Y <- Y.mat[,k]
     est.store[[k]][i,"RAW"] <- mean(Y[W==1]) - mean(Y[W==0])
   }
-  
-  
+
+
   # Model matching predictions
   mmxlist <- mmlist <- list()
   for(k in 1:3){
@@ -129,7 +129,7 @@ for(i in 1:sims){ # start simulations
     # combine
     mmlist[[k]] <- mmxlist
     }
-  
+
   # model-based matching
   for(k in 1:3){
     Y <- Y.mat[,k]
@@ -139,10 +139,10 @@ for(i in 1:sims){ # start simulations
       pairs.df <- data.frame(do.call(rbind,pairs))
       w0 <- 1/table(pairs.df[pairs.df$tr == 0,1]); Y0 <- Y[unique(pairs.df[pairs.df$tr==0,1])]
       mm_res <- permu_test_mean(pairs, pred, Y, iters=1000)
-      est.store[[k]][i,paste("MM", p, sep="")] <- mm_res[[1]]/tr
+      est.store[[k]][i,paste("MM", p, sep="")] <- mm_res[[1]] #mm_res[[1]]/tr # edit: I changed MM function to divide by number treated
       est.store[[k]][i,paste("MM", p, "ATT", sep="")] <- mean(Y[W==1]) - sum(Y0*w0)/sum(w0)
   }}
-  
+
   # entropy balancing
   for(k in 1:3){
     Y <- Y.mat[,k]
@@ -166,7 +166,7 @@ for(i in 1:sims){ # start simulations
     out  <- Match(Tr=W,X=X,Weight.matrix=gout,estimand="ATT",M=1,BiasAdjust=FALSE)
     est.store[[k]][i,"GM"] <- (sum(Y[out$index.treated]*out$weights)/sum(out$weights)) - (sum(Y[out$index.control]*out$weights)/sum(out$weights))
   }
-  
+
   # Propensity scoring methods
   # Matching
   for(k in 1:3){
@@ -180,7 +180,7 @@ for(i in 1:sims){ # start simulations
         out <- Match(Tr=W,X=PS,estimand="ATT",M=1,BiasAdjust = FALSE)
         est.store[[k]][i,paste("PS",p,sep="")] <- (sum(Y[out$index.treated]*out$weights)/sum(out$weights)) - (sum(Y[out$index.control]*out$weights)/sum(out$weights))
     }
-    
+
     # Weighting
     PS.pr <- pslist[[p]]$fitted
     d <- PS.pr/(1-PS.pr)
@@ -200,7 +200,7 @@ for(i in 1:sims){ # start simulations
     para.store[[k]][i,"tr"] <- sum(W==1)
     para.store[[k]][i,"co"] <- sum(W==0)
   }
-  
+
   est.summ <- lapply(est.store, function(x)round(apply(x, 2, mean, na.rm=T), 5))
   para.summ <- lapply(para.store, function(x)round(apply(x, 2, mean, na.rm=T), 5))
   mse <- lapply(est.store, function(x) apply(x, 2, function(y) mean((y-0)^2, na.rm=T)))
@@ -209,4 +209,3 @@ for(i in 1:sims){ # start simulations
 
 save(est.store, para.store, est.summ, para.summ, mse, bias, file = "simulation1.Rdata")
 
-  

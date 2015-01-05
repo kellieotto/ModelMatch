@@ -12,4 +12,6 @@ strata <- Matches(treatment=dat$Treated, prediction=mod$fitted)
 perm_strata <- permute_within_groups(strata)
 resid <- mod$residuals
 res <- permu_test_mean(strata, prediction = mod$fitted, response = dat$RE78)
-hist(res$perm_distribution); abline(v=res$diff_means)
+hist(res$perm_distribution/nrow(dat_tr)); abline(v=res$diff_means, col = "red")
+d <- permu_CI_mean(groups=strata, prediction = mod$fitted, response = dat$RE78, side = "both",iters=50, precision = 50)
+abline(v = d[1], lty = 3); abline(v = d[2], lty = 3)
