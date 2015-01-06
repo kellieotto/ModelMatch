@@ -7,9 +7,17 @@ mod <- loess(DriversKilled~PetrolPrice, data = seat)
 strata <- Matches(treatment=seat$law, prediction=mod$fitted)
 perm_strata <- permute_within_groups(strata)
 resid <- mod$residuals
-res <- permu_test_mean(strata, prediction = mod$fitted, response = seat$DriversKilled)
+
+
+### test 1: null hypothesis shift = 0
+res <- permu_test_mean(strata, prediction = mod$fitted, treatment = seat$law, response = seat$DriversKilled)
 hist(res$perm_distribution/length(strata)); abline(v=res$diff_means, col = "red")
-d <- permu_CI_mean(groups=strata, prediction=mod$fitted, response=seat$DriversKilled, side = "lower",iters=100, precision = 25)
+### test 2: null hypothesis shift = -23
+res <- permu_test_mean(strata, prediction = mod$fitted, treatment = seat$law, response = seat$DriversKilled, shift = -23)
+hist(res$perm_distribution/length(strata)); abline(v=res$diff_means, col = "red")
+
+
+d <- permu_CI_mean(groups=strata, prediction=mod$fitted, treatment = seat$law, response=seat$DriversKilled, side = "both", iters=100, precision = 25, verbose = TRUE)
 abline(v = d[1], lty = 2); abline(v = d[2], lty = 2)
 
 context("Strata")

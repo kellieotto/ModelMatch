@@ -36,28 +36,31 @@ permute_within_groups <- function(groups){
   return(permuted)
 }
 
-within_group_mean <- function(groups, prediction, response){
+within_group_mean <- function(groups, prediction, response, shift = 0){
   ### Compute difference in mean residual between treated and control within each group
   ### Input: groups     = list from Matches (or from stratification function)
   ###        prediction = vector of predictions from the model
   ###        response   = vector of observed responses for each individual
+  ###        shift      = null shift (constant scalar) for treatment group (default 0)
   resid <- prediction-response
   sapply(groups, function(g){
     treated <- g[g[,2]==1,1]
     ctrl    <- g[g[,2]==0,1]
-    return(mean(resid[treated]) - mean(resid[ctrl]))
+    return(-1*(mean(resid[treated] - shift) - mean(resid[ctrl])))
   })
 }
 
-permu_test_mean <- function(groups, prediction, response, iters=1000){
+permu_test_mean <- function(groups, prediction, treatment, response, iters=1000, shift = 0){
   ### Carry out stratified permutation test for difference in mean residuals
   ### Input: groups     = list from Matches (or from stratification function)
   ###        prediction = vector of predictions from the model
   ###        response   = vector of observed responses for each individual
   ###        iters      = number of permutations (default 1000)
+  ###        shift      = null shift (constant scalar) for treatment group (default 0)
   truth <- sum(within_group_mean(groups, prediction, response))
+  response_shift <- response - shift*treatment
   perm_dist <- replicate(iters, {perm_groups <- permute_within_groups(groups)
-                                 sum(within_group_mean(perm_groups, prediction, response))})
+                                 sum(within_group_mean(perm_groups, prediction, response_shift, shift = shift))})
   pval <- c("p_upper" = sum(perm_dist >= truth)/iters,
             "p_lower" = sum(perm_dist <= truth)/iters,	#
             "twosided" = sum(abs(perm_dist) >= abs(truth))/iters)	# Alt hypoth: residual mean after law effected different from residual mean for pre-law
@@ -65,7 +68,7 @@ permu_test_mean <- function(groups, prediction, response, iters=1000){
 }
 
 
-permu_CI_mean <- function(groups, prediction, response, side = "both", alpha=0.05, iters=1000, precision = 50, verbose = FALSE){
+permu_CI_mean <- function(groups, prediction, response, treatment, side = "both", alpha=0.05, iters=1000, shift = 0, precision = 50, verbose = FALSE){
   ### Invert the stratified permutation test to get a 1-alpha confidence interval for the difference in mean residuals
   ### Input: groups     = list from Matches (or from stratification function)
   ###        prediction = vector of predictions from the model
@@ -73,29 +76,30 @@ permu_CI_mean <- function(groups, prediction, response, side = "both", alpha=0.0
   ###        side       = Type of interval, either "both", "upper", or "lower". Default is "both"
   ###        alpha      = Significance level
   ###        iters      = number of permutations (default 1000)
+  ###        shift      = null shift (constant scalar) for treatment group (default 0)
   ###        precision  = rate at which to increase the confidence bounds under consideration.
   ###                     higher = slower run time but more precise. Default is 50 (relative to estimated diff in means)
   ###       verbose     = indicator whether to print p-values associated with each confidence interval endpoint considered.
   if(side == "both"){
     alpha <- alpha/2
-    d1 <- permu_CI_mean(groups = groups, prediction = prediction, response = response, side = "lower", alpha = alpha, iters = iters, precision = precision, verbose = verbose)
-    d2 <- permu_CI_mean(groups = groups, prediction = prediction, response = response, side = "upper", alpha = alpha, iters = iters, precision = precision, verbose = verbose)
+    d1 <- permu_CI_mean(groups = groups, prediction = prediction, treatment = treatment, response = response, side = "lower", alpha = alpha, iters = iters, precision = precision, verbose = verbose)
+    d2 <- permu_CI_mean(groups = groups, prediction = prediction, treatment = treatment, response = response, side = "upper", alpha = alpha, iters = iters, precision = precision, verbose = verbose)
     return(c(d1,d2))
   }
-  pvalue_side <- which(c("lower", "upper", "both") == side)
+  pvalue_side <- which(c("lower", "upper", "both") == side); print(pvalue_side)
 
   # initialize
   tr <- sapply(strata, function(x) x[x[,"tr"] == 1,"stratum"])
-  response_alt <- response
-  res <- permu_test_mean(groups, prediction, response, iters = iters)
-  d_true <- res$diff_means; d <- res$diff_means; incr <- d/precision
+#  response_alt <- response
+  res <- permu_test_mean(groups = groups, prediction = prediction, treatment = treatment, response = response, iters = iters)
+  d_true <- res$diff_means; d <- res$diff_means; incr <- abs(d)/precision
   shift_pval <- rep(1,3)
 
   # Conduct permutation test for H0: shift = d until we reject H0
   while(shift_pval[pvalue_side] > alpha){
-    d <- ifelse(side == "upper", d+incr*sign(incr), d+incr)
-    response_alt[tr] <- response[tr] + d
-    res <- permu_test_mean(groups, prediction, response_alt, iters = iters)
+    d <- ifelse(side == "upper", d+incr, d-incr)
+#    response_alt[tr] <- response[tr] + d
+    res <- permu_test_mean(groups, prediction, treatment, response, shift = d, iters = iters)
     shift_pval <- res$pvalue
     if(verbose){print(d); print(shift_pval)}
   }
