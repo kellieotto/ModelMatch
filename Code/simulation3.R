@@ -1,6 +1,6 @@
 ### Monte Carlo simulation 1
 ### Based on JH Ebal simulations
-### by Kellie Ottoboni 11/6/2014
+### by Kellie Ottoboni; last edited 1/13/2015
 ### Design 3: medium separation of treatment and control groups, skewed distribution
 ### Selection model: D = ind(X1 + 2X2 - 2X3 - X4 - 0.5X5 + X6 + epsilon > 0)
 ### where epsilon ~ chi-squared on 5 df, scaled to have mean 0.5 and variance 67.6
@@ -15,10 +15,12 @@ library(Matching)
 library(MASS)
 library(ebal)
 library(devtools)
-install_github("ModelMatch", username = "kellieotto", subdir = "ModelMatch")
+install_github("kellieotto/ModelMatch/ModelMatch")
 library(ModelMatch)
 library(glmnet)
 library(ipred)
+library(randomForest)
+
 
 ## Setup
 sims <- 100
@@ -40,7 +42,7 @@ nsim  <- 300
 tr <- nsim/2; tr
 co <- nsim - tr; co
 para  <- c("FracCtoT","N","tr","co","corY.PS","corW.PS","corW.MM1","corW.MM2","corW.MM3","corPS.PS1","corPS.PS2","corPS.PS3")
-est    <- c("RAW","MM1","MM1ATT","MM2","MM2ATT","MM3","MM3ATT","PS1","PS2","PS3","PSW1","PSW2","PSW3","EB","GM")
+est    <- c("RAW","MM1","MM1ATT","MM2","MM2ATT","MM3","MM3ATT","MM4","MM4ATT","PS1","PS2","PS3","PSW1","PSW2","PSW3","EB","GM")
 
 
 # expand storage for three different outcomes
@@ -124,13 +126,15 @@ for(i in 1:sims){ # start simulations
     # Model 1: simple linear regression on all covariates
     model.MM1 <- lm(Y~X1+X2+X3+X4+X5+X6)
     mmxlist[[1]] <- model.MM1$fitted
-    # Model 2: regularized linear regression on all covariates
-    MM2.temp <- cv.glmnet(x=X, y=Y, family = "gaussian")
-    model.MM2 <- glmnet(x=X, y=Y, family = "gaussian", lambda = MM2.temp$lambda.1se)
-    mmxlist[[2]] <- predict(model.MM2, X)
+    # Model 2: linear regression on all covariates with higher order polynomial terms
+    model.MM2 <- lm(Y~X1+I(X1^2)+I(X1^3)+X2+I(X2^2)+I(X2^3)+X3+I(X3^2)+I(X3^3)+X4+I(X4^2)+I(X4^3)+X5+I(X5^2)+I(X5^3)+X6+I(X6^2)+I(X6^3))
+    mmxlist[[2]] <- model.MM1$fitted
     # Model 3: bagged regression trees, default 25 bags
     model.MM3 <- bagging(Y~., data = data.frame(Y,X), coob=TRUE)
     mmxlist[[3]] <- predict(model.MM3, X)
+    # Model 4: random forest
+    model.MM4 <- randomForest(Y~., data = data.frame(Y,X))
+    mmxlist[[4]] <- predict(model.MM4, X)
     # combine
     mmlist[[k]] <- mmxlist
   }
@@ -138,13 +142,13 @@ for(i in 1:sims){ # start simulations
   # model-based matching
   for(k in 1:3){
     Y <- Y.mat[,k]
-    for(p in 1:3){
+    for(p in 1:4){
       pred <- mmlist[[k]][[p]]
       pairs <- Matches(W, pred)
       pairs.df <- data.frame(do.call(rbind,pairs))
       w0 <- 1/table(pairs.df[pairs.df$tr == 0,1]); Y0 <- Y[unique(pairs.df[pairs.df$tr==0,1])]
-      mm_res <- permu_test_mean(pairs, pred, Y, iters=1000)
-      est.store[[k]][i,paste("MM", p, sep="")] <- mm_res[[1]]/tr
+      mm_res <- permu_test_mean(groups = pairs, prediction = pred, treatment = W, response = Y, iters=1000)
+      est.store[[k]][i,paste("MM", p, sep="")] <- mm_res[[1]] #mm_res[[1]]/tr # edit: I changed MM function to divide by number treated
       est.store[[k]][i,paste("MM", p, "ATT", sep="")] <- mean(Y[W==1]) - sum(Y0*w0)/sum(w0)
     }}
   
