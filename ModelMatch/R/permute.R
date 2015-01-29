@@ -184,20 +184,20 @@ permu_pearson_shift <- function(prediction, response, treatment, iters = 1000, s
 #' @param alpha Significance level
 #' @param verbose Verbosity switch - print the p-value and confidence interval endpoint at each step? (Default FALSE)
 #' @return a confidence interval (vector)
-permu_CI_pearson <- function(prediction, outcome, treatment, iters, alpha = 0.05, side = "both", verbosity = FALSE){
-  resid <- prediction-outcome
+permu_CI_pearson <- function(prediction, response, treatment, iters, alpha = 0.05, side = "both", verbosity = FALSE){
+  resid <- prediction-response
   if(side == "both"){
-    d1 <- permu_CI_pearson(prediction, outcome, treatment, iters, alpha = alpha/2, side = "lower")
-    d2 <- permu_CI_pearson(prediction, outcome, treatment, iters, alpha = alpha/2, side = "upper")
+    d1 <- permu_CI_pearson(prediction, response, treatment, iters, alpha = alpha/2, side = "lower", verbosity = verbosity)
+    d2 <- permu_CI_pearson(prediction, response, treatment, iters, alpha = alpha/2, side = "upper", verbosity = verbosity)
     return(c(d1,d2))
   }
-  which_p <- which(c("lower", "upper", "both") %in% side)
+  which_p <- which(c("lower", "upper", "both") %in% side); if(verbosity){print(side)}
   pval <- rep(1,3)
   d <- ifelse(side == "upper", 0.005, -0.005); shift <- d
   while(pval[which_p] >= alpha){
-    res <- permu_pearson_shift(prediction, outcome, treatment, iters, shift = shift)
+    res <- permu_pearson_shift(prediction, response, treatment, iters, shift = shift)
     pval <- res$pvalue; shift <- shift+d
-    if(verbosity){cat(shift-d, "\n", pval, "\n")}
+    if(verbosity == TRUE){cat(shift-d, "\n", pval, "\n")}
   }
   return(res$estimate +  shift)
 }
