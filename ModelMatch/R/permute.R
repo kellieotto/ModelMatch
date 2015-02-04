@@ -1,3 +1,25 @@
+###################################################### Modeling and matching ######################################################
+
+#' Match on model predictions.
+#'
+#' At this point, Matches only supports one-to-one matching of treatment and control groups.
+#' @param treatment Vector of treatment values
+#' @param prediction Vector of predicted outcomes
+#' @return a list. Each entry is a group of matched individuals with their treatments.
+Matches <- function(treatment, prediction){
+  pairs <- Match(Tr = treatment, X = prediction, replace = TRUE, M=1, ties = FALSE)
+  pairs <- pairs$MatchLoopC[,1:2]
+  strata <- lapply(unique(pairs[,1]), function(i){
+    matches <- pairs[pairs[,1]==i,2]
+    stratum <- c(i,matches)
+    tr      <- treatment[stratum]
+    cbind(stratum,tr)
+  })
+  return(strata)
+}
+
+
+
 ###################################################### Stratified permutation test for difference in mean residuals ######################################################
 
 #' Permute within groups

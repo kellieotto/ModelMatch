@@ -1,11 +1,12 @@
-library(rpart)
-library(ipred)
-library(randomForest)
-library(e1071)
-library(gam)
-library(gbm)
-library(nnet)
-choose_model <- function(dat){
+# library(rpart)
+# library(ipred)
+# library(randomForest)
+# library(e1071)
+# library(gam)
+# library(gbm)
+# library(nnet)
+### NEED TO UPDATE - don't use!
+choose_model_old <- function(dat){
   ### dat = dataframe of inputs, including the outcome and all predictors. e0 is the outcome
   mod_lm <- lm(e0~., data = dat); mod_lm$fitted
   mod_poly <- lm(dat$e0~poly(as.matrix(dat[,-1], degree = 2, raw = TRUE))); predict(mod_poly)
@@ -24,23 +25,4 @@ choose_model <- function(dat){
   return(models[[best]])
 }
 
-
-
-#' Match on model predictions.
-#'
-#' At this point, Matches only supports one-to-one matching of treatment and control groups.
-#' @param treatment Vector of treatment values
-#' @param prediction Vector of predicted outcomes
-#' @return a list. Each entry is a group of matched individuals with their treatments.
-Matches <- function(treatment, prediction){
-  pairs <- Match(Tr = treatment, X = prediction, replace = TRUE, M=1, ties = FALSE)
-  pairs <- pairs$MatchLoopC[,1:2]
-  strata <- lapply(unique(pairs[,1]), function(i){
-    matches <- pairs[pairs[,1]==i,2]
-    stratum <- c(i,matches)
-    tr      <- treatment[stratum]
-    cbind(stratum,tr)
-  })
-  return(strata)
-}
 
