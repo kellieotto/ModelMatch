@@ -128,7 +128,7 @@ for(i in 1:sims){ # start simulations
     mmxlist[[1]] <- model.MM1$fitted
     # Model 2: linear regression on all covariates with higher order polynomial terms
     model.MM2 <- lm(Y~X1+I(X1^2)+I(X1^3)+X2+I(X2^2)+I(X2^3)+X3+I(X3^2)+I(X3^3)+X4+I(X4^2)+I(X4^3)+X5+I(X5^2)+I(X5^3)+X6+I(X6^2)+I(X6^3))
-    mmxlist[[2]] <- model.MM1$fitted
+    mmxlist[[2]] <- model.MM2$fitted
     # Model 3: bagged regression trees, default 25 bags
     model.MM3 <- bagging(Y~., data = data.frame(Y,X), coob=TRUE)
     mmxlist[[3]] <- predict(model.MM3, X)

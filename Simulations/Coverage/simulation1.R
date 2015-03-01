@@ -1,13 +1,12 @@
-### Monte Carlo simulation 1
+### Confidence interval simulation 1
 ### Based on JH Ebal simulations
-### by Kellie Ottoboni; last edited 1/13/2015
-### Design 2: weak separation of treatment and control groups
-### Selection model: D = ind(X1 + 2X2 - 2X3 - X4 - 0.5X5 + X6 + epsilon > 0)
-### where epsilon ~ N(0, 100)
-### Outcome models: 1) Y1 = X1 + X2 + X3 - X4 + X5 + X6 + N(0,1) (strong linear)
-###                 2) Y2 <- X1 + X2 + 0.2*X3*X4 - sqrt(X5) + N(0,1) (medium nonlinear)
-###                 3) Y3 <- (X1 + X2 + X5)^2 + N(0,1) (strongly nonlinear)
-### True treatment effect is fixed at 0.
+### by Kellie Ottoboni; last edited 3/1/2015
+### Simple design from Freedman (Weighting Regressions by P Scores)
+### Y = a + bX + c1Z1 + c2Z2 + dU
+### X = I(e + f1Z1 + f2Z2 + V > 0)
+### U and V are N(0,1); U, V, (Z1, Z2) are mutually independent
+### True treatment effect b is fixed at 1.
+### Compare nominal (1-alpha)% coverage to true coverage of CIs
 
 
 rm(list=ls())
@@ -21,19 +20,24 @@ library(glmnet)
 library(ipred)
 library(randomForest)
 
-
 ## Setup
 sims <- 100
-n    <- 5000
+alpha <- 0.05
 
-# X1-X3 multivariate normal with variances 2, 1, 1 and covars 1, -1, -.5
-vars   <- c(2,1,1)
-covars <- c(1,-1,-.5)
-mu     <- c(0,0,0)
-Sigma <- diag(vars)
-Sigma[2,1] <- Sigma[1,2] <- covars[1]
-Sigma[3,1] <- Sigma[1,3] <- covars[2]
-Sigma[3,2] <- Sigma[2,3] <- covars[3]
+# (U, V, Z1, Z2) are multivariate normal with variances 1 and covars 0,0,.75,.75
+a <- b <- c1 <- d <- 1
+c2 <- 2
+e <- 0.5
+f1 <- 0.25
+f2 <- 0.75
+sigma <- 1
+rho <- 1
+Sigma <- diag(rep(1,4))
+Sigma[3,3] <- Sigma[4,4] <- sigma
+Sigma[3,4] <- Sigma[4,3] <- rho
+mu <- c(0, 0, 0.5, 1)
+
+
 
 # pick target sample size
 #nsim <- 1500
@@ -41,108 +45,80 @@ Sigma[3,2] <- Sigma[2,3] <- covars[3]
 nsim  <- 300
 tr <- nsim/2; tr
 co <- nsim - tr; co
-para  <- c("FracCtoT","N","tr","co","corY.PS","corW.PS","corW.MM1","corW.MM2","corW.MM3","corPS.PS1","corPS.PS2","corPS.PS3")
 est    <- c("RAW","MM1","MM1ATT","MM2","MM2ATT","MM3","MM3ATT","MM4","MM4ATT","PS1","PS2","PS3","PSW1","PSW2","PSW3","EB","GM")
 
-
 # expand storage for three different outcomes
-est.store <- para.store <- list()
-for(k in 1:3){
-  est.store[[k]]   <- matrix(NA,sims,length(est), dimnames = list(c(), est))
-  para.store[[k]]  <- matrix(NA,sims,length(para), dimnames = list(c(), para))
-}
-names(est.store) <- names(para.store) <- c("Y1","Y2","Y3")
+est.store <- matrix(NA, sims,length(est), dimnames = list(c(), est))
 
 for(i in 1:sims){ # start simulations
   print(i)
   # draw Xs
-  X13 <- mvrnorm(n,mu=mu,Sigma=Sigma, empirical = F)
-  X1 <- X13[,1]
-  X2 <- X13[,2]
-  X3 <- X13[,3]
-  X4 <- runif(n,-3,3)
-  X5 <- rchisq(n, df=1)
-  X6 <- rbinom(n,size=1,prob=.5)
-  e <- rnorm(n,mean=0,sd=sqrt(100))
-  xb <- X1 + 2*X2 - 2*X3  - X4 - .5*X5 + X6 +  e
-  W  <- as.numeric(xb>0)
+  var <- mvrnorm(nsim, mu=mu, Sigma=Sigma, empirical = F)
+  U <- var[,1]
+  V <- var[,2]
+  Z1 <- var[,3]
+  Z2 <- var[,4]
+  X <- (e + f1*Z1 + f2*Z2 + V > 0)
+  Y <- a + b*X + c1*Z1 + c2*Z2 + d*U
   
-  # sample to target sizes
-  sim.dat <- data.frame(W,X1,X2,X3,X4,X5,X6)
-  tr.keep <- sample(which(sim.dat$W==1),tr,replace=F)
-  co.keep <- sample(which(sim.dat$W==0),co,replace=F)
-  sim.dat <- sim.dat[c(tr.keep,co.keep),]
-  W <- sim.dat[,"W"]
-  X <- as.matrix(sim.dat[,names(sim.dat)[-1]])
-  X1 <- X[,"X1"]; X2 <- X[,"X2"]; X3 <- X[,"X3"]; X4 <- X[,"X4"]; X5 <- X[,"X5"];X6 <- X[,"X6"]
+#   # sample to target sizes
+#   sim.dat <- data.frame(W,X1,X2,X3,X4,X5,X6)
+#   tr.keep <- sample(which(sim.dat$W==1),tr,replace=F)
+#   co.keep <- sample(which(sim.dat$W==0),co,replace=F)
+#   sim.dat <- sim.dat[c(tr.keep,co.keep),]
+#   W <- sim.dat[,"W"]
+#   X <- as.matrix(sim.dat[,names(sim.dat)[-1]])
   
   # true linear propensity scores
-  PS.out  <- glm(W~X,family=binomial(link = "probit"))
+  PS.out  <- glm(X~ Z1 + Z2,family=binomial(link = "probit"))
   PS.true <- PS.out$fitted
   
   # propensity score specification formulae
   psxlist <- pslist <- list()
-  # ps 1
-  formula.PS1 <- formula(W~X1+X2+X3+X4+X5+X6)
+  # ps 1 - misspecified
+  formula.PS1 <- formula(X ~ Z1)
   psxlist[[1]] <- model.matrix(formula.PS1)[,-1]
-  # ps 2
-  formula.PS2  <- formula(W~I(X1^2)+I(X2^2)+X3+I(X4^2)+I(X5^2)+X6)
+  # ps 2 - misspecified
+  formula.PS2  <- formula(X ~ Z2)
   psxlist[[2]] <- model.matrix(formula.PS2)[,-1]
-  # ps 3
-  formula.PS3  <- formula(W~I(X1*X3)+I(X2^2)+X4+X5+X6)
+  # ps 3 - correctly specified
+  formula.PS3  <- formula(X ~ Z1+Z2)
   psxlist[[3]] <- model.matrix(formula.PS3)[,-1]
   # PS estimation
   for(p in 1:3){
-    pslist[[p]] <- glm(W~psxlist[[p]],family=binomial(link = "probit"))
+    pslist[[p]] <- glm(X~psxlist[[p]],family=binomial(link = "probit"))
   }
   
-  # outcome: treatment effect is zero
-  u  <- rnorm(nrow(X))
-  # ouctome 1 (linear)
-  Y1 <- X1 + X2 + X3 - X4 + X5 + X6 + u
-  # outcome 2 (medium nonlinear)
-  Y2 <- X1 + X2 + 0.2*X3*X4 - sqrt(X5) + u
-  # outcome 3 (strongly nonlinear)
-  Y3 <- (X1 + X2 + X5)^2 + u
-  # combine 
-  Y.mat <- cbind(Y1,Y2,Y3)
   
   
   # raw outcome
-  for(k in 1:3){
-    Y <- Y.mat[,k]
-    est.store[[k]][i,"RAW"] <- mean(Y[W==1]) - mean(Y[W==0])
-  }
+  ttest_ci <- confint(lm(Y~X), level = 1-alpha)[2,]
+  est.store[i,"RAW"] <- (b >= ttest_ci[1] & b<= ttest_ci[2])
+  
   
   # Model matching predictions
-  mmxlist <- mmlist <- list()
-  for(k in 1:3){
-    Y <- Y.mat[,k]
-    # Model 1: simple linear regression on all covariates
-    model.MM1 <- lm(Y~X1+X2+X3+X4+X5+X6)
-    mmxlist[[1]] <- model.MM1$fitted
-    # Model 2: linear regression on all covariates with higher order polynomial terms
-    model.MM2 <- lm(Y~X1+I(X1^2)+I(X1^3)+X2+I(X2^2)+I(X2^3)+X3+I(X3^2)+I(X3^3)+X4+I(X4^2)+I(X4^3)+X5+I(X5^2)+I(X5^3)+X6+I(X6^2)+I(X6^3))
-    mmxlist[[2]] <- model.MM2$fitted
-    # Model 3: bagged regression trees, default 25 bags
-    model.MM3 <- bagging(Y~., data = data.frame(Y,X), coob=TRUE)
-    mmxlist[[3]] <- predict(model.MM3, X)
-    # Model 4: random forest
-    model.MM4 <- randomForest(Y~., data = data.frame(Y,X))
-    mmxlist[[4]] <- predict(model.MM4, X)
-    # combine
-    mmlist[[k]] <- mmxlist
-  }
+  mmlist <- list()
+  # Model 1: simple linear regression on all covariates
+  model.MM1 <- lm(Y~X + Z1 + Z2)
+  mmlist[[1]] <- model.MM1$fitted
+  # Model 2: linear regression on all covariates with higher order polynomial terms
+  model.MM2 <- lm(Y~X+I(X^2)+I(X^3)+Z1+I(Z1^2)+I(Z1^3)+Z2+I(Z2^2)+I(Z2^3))    
+  mmlist[[2]] <- model.MM2$fitted
+  # Model 3: bagged regression trees, default 25 bags
+  model.MM3 <- bagging(Y~., data = data.frame(Y,X,Z1,Z2), coob=TRUE)
+  mmlist[[3]] <- predict(model.MM3, data.frame(X,Z1,Z2))
+  # Model 4: random forest
+  model.MM4 <- randomForest(Y~., data = data.frame(Y,X,Z1,Z2))
+  mmlist[[4]] <- predict(model.MM4, X)
+  
   
   # model-based matching
-  for(k in 1:3){
-    Y <- Y.mat[,k]
-    for(p in 1:4){
-      pred <- mmlist[[k]][[p]]
-      pairs <- Matches(W, pred)
-      pairs.df <- data.frame(do.call(rbind,pairs))
-      w0 <- 1/table(pairs.df[pairs.df$tr == 0,1]); Y0 <- Y[unique(pairs.df[pairs.df$tr==0,1])]
-      mm_res <- permu_test_mean(groups = pairs, prediction = pred, treatment = W, response = Y, iters=1000)
+  for(p in 1:4){
+    pred <- mmlist[[p]]
+    pairs <- Matches(X, pred)
+    pairs.df <- data.frame(do.call(rbind,pairs))
+    w0 <- 1/table(pairs.df[pairs.df$tr == 0,1]); Y0 <- Y[unique(pairs.df[pairs.df$tr==0,1])]
+      mm_res <- permu_CI_mean(groups = pairs, prediction = pred, response = Y, treatment = X, side = "both", alpha = alpha, iters=1000, verbose = TRUE)
       est.store[[k]][i,paste("MM", p, sep="")] <- mm_res[[1]] #mm_res[[1]]/tr # edit: I changed MM function to divide by number treated
       est.store[[k]][i,paste("MM", p, "ATT", sep="")] <- mean(Y[W==1]) - sum(Y0*w0)/sum(w0)
     }}
@@ -211,5 +187,6 @@ for(i in 1:sims){ # start simulations
   bias <- lapply(est.store, function(x) apply(x, 2, function(y) mean(y-0, na.rm=T)))
 }
 
-save(est.store, para.store, est.summ, para.summ, mse, bias, file = "simulation2.Rdata")
+save(est.store, para.store, est.summ, para.summ, mse, bias, file = "simulation1.Rdata")
+
 

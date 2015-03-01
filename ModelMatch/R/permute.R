@@ -102,7 +102,7 @@ permu_CI_mean <- function(groups, prediction, response, treatment, side = "both"
   pvalue_side <- which(c("lower", "upper", "both") == side); print(pvalue_side)
 
   # initialize
-  tr <- sapply(strata, function(x) x[x[,"tr"] == 1,"stratum"])
+  tr <- sapply(groups, function(x) x[x[,"tr"] == 1,"stratum"])
 #  response_alt <- response
   res <- permu_test_mean(groups = groups, prediction = prediction, treatment = treatment, response = response, iters = iters)
   d_true <- res$diff_means; d <- res$diff_means; incr <- abs(d)*precision
