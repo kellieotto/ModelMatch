@@ -1,3 +1,7 @@
 .ipynb_checkpoints/*
 .Rapp.history
 .Rproj.user
+
+.Rhistory
+
+.RData

@@ -99,7 +99,7 @@ permu_CI_mean <- function(groups, prediction, response, treatment, side = "both"
     d2 <- permu_CI_mean(groups = groups, prediction = prediction, treatment = treatment, response = response, side = "upper", alpha = alpha, iters = iters, precision = precision, verbose = verbose)
     return(c(d1,d2))
   }
-  pvalue_side <- which(c("lower", "upper", "both") == side); print(pvalue_side)
+  pvalue_side <- which(c("lower", "upper", "both") == side)
 
   # initialize
   tr <- sapply(groups, function(x) x[x[,"tr"] == 1,"stratum"])
