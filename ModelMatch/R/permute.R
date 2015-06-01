@@ -90,9 +90,8 @@ permu_test_mean <- function(groups, prediction, treatment, response, iters=1000,
 #' @param side Type of interval, either "both", "upper", or "lower". Default is "both".
 #' @param alpha Significance level
 #' @param precision Rate at which to iteratively increment the confidence bounds, relative to the estimated difference in means. The value should be between 0 and 1. Smaller precision results in a slower run time but more precise confidence bounds (default is 0.02)
-#' @param verbose Verbosity switch - print the p-value and confidence interval endpoint at each step? (Default FALSE)
 #' @return a vector of differences
-permu_CI_mean <- function(groups, prediction, response, treatment, side = "both", alpha=0.05, iters=1000, shift = 0, precision = 0.02, verbose = FALSE){
+permu_CI_mean <- function(groups, prediction, response, treatment, side = "both", alpha=0.05, iters=1000){
   if(side == "both"){
     alpha <- alpha/2
     d1 <- permu_CI_mean(groups = groups, prediction = prediction, treatment = treatment, response = response, side = "lower", alpha = alpha, iters = iters, precision = precision, verbose = verbose)
@@ -103,20 +102,32 @@ permu_CI_mean <- function(groups, prediction, response, treatment, side = "both"
 
   # initialize
   tr <- sapply(groups, function(x) x[x[,"tr"] == 1,"stratum"])
-#  response_alt <- response
-  res <- permu_test_mean(groups = groups, prediction = prediction, treatment = treatment, response = response, iters = iters)
-  d_true <- res$diff_means; d <- res$diff_means; incr <- abs(d)*precision
+  res <- permu_test_mean(groups = groups, prediction = prediction, treatment = treatment, response = response, iters = 1)
+  d_prev <- res$diff_means; d_next <- res$diff_means; incr <- (max(prediction-response) - min(prediction-response))/3
   shift_pval <- rep(1,3)
+  shift_permtest <- function(ss, pval = FALSE){
+      # if pval = TRUE, return ONLY the relevant p-value
+      res <- permu_test_mean(groups, prediction, treatment, response, shift = ss, iters = iters)
+      if(pval == TRUE){return(res$pvalue[pvalue_side])}
+      return(res)
+    }
 
   # Conduct permutation test for H0: shift = d until we reject H0
   while(shift_pval[pvalue_side] > alpha){
-    d <- ifelse(side == "upper", d+incr, d-incr)
-#    response_alt[tr] <- response[tr] + d
-    res <- permu_test_mean(groups, prediction, treatment, response, shift = d, iters = iters)
+    d_prev <- d_next
+    d_next <- ifelse(side == "upper", d_prev+incr, d_prev-incr)
+    res <- shift_permtest(d_next)
     shift_pval <- res$pvalue
-    if(verbose){print(d); print(shift_pval)}
   }
-  return(d)
+
+  # Bisection
+  if(side == "upper"){
+    l_int <- d_prev; u_int <- d_next
+  }else{
+    l_int <- d_next; u_int <- d_prev
+  }
+  d <- uniroot(function(x) {shift_permtest(x, pval=TRUE)-alpha}, lower = l_int, upper = u_int, tol = alpha/iters)
+  return(d$root)
 }
 
 

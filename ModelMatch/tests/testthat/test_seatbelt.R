@@ -17,7 +17,7 @@ res <- permu_test_mean(strata, prediction = mod$fitted, treatment = seat$law, re
 hist(res$perm_distribution/length(strata)); abline(v=res$diff_means, col = "red")
 
 
-d <- permu_CI_mean(groups=strata, prediction=mod$fitted, treatment = seat$law, response=seat$DriversKilled, side = "both", iters=100, precision = 25, verbose = TRUE)
+d <- permu_CI_mean(groups=strata, prediction=mod$fitted, treatment = seat$law, response=seat$DriversKilled, side = "both", iters=1000, verbose = TRUE)
 abline(v = d[1], lty = 2); abline(v = d[2], lty = 2)
 
 context("Strata")
