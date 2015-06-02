@@ -143,13 +143,15 @@ permu_CI_mean <- function(groups, prediction, response, treatment, side = "both"
 #' @param response Vector of responses
 #' @param treatment Vector of treatments
 #' @param iters The number of Monte Carlo iterations (default 1000)
+#' #' @param shift Null shift away from 0 (a scalar constant) in correlation (default 0)
 #' @return a list containing the results: attributes estimate (the estimated difference), distr (simulated permutation distribution), and pvalue (p-value for the test)
-permu_pearson <- function(prediction, response, treatment, iters = 1000){
+permu_pearson <- function(prediction, response, treatment, iters = 1000, shift = 0){
   resid <- prediction-response
   pearson_r <- cor(resid, treatment)
   distr <- replicate(iters, {
     tr <- sample(treatment)
-    cor(resid, tr)
+    tmp <- cor(resid, tr)
+    sign(tmp+shift)*min(abs(tmp)+shift, 1)
   })
   pval <- c("p_upper" = sum(distr >= pearson_r)/iters,
             "p_lower" = sum(distr <= pearson_r)/iters,
@@ -184,53 +186,64 @@ bootstrap_CI_pearson <- function(prediction, outcome, treatment, iters, alpha = 
 
 
 
-
-#' Test the correlation between residuals and treatment
-#'
-#' Carry out a permutation test for the Pearson correlation between residuals and treatment.
-#' @param prediction Vector of predicted outcomes
-#' @param response Vector of responses
-#' @param treatment Vector of treatments
-#' @param iters The number of Monte Carlo iterations (default 1000)
-#' @param shift Null shift away from 0 (a scalar constant) in correlation (default 0)
-#' @return a list containing the results: attributes estimate (the estimated difference), distr (simulated permutation distribution), and pvalue (p-value for the test)
-permu_pearson_shift <- function(prediction, response, treatment, iters = 1000, shift = 0){
-  resid <- prediction-response
-  pearson_r <- cor(resid, treatment)
-  distr <- replicate(iters, {
-    tr <- sample(treatment)
-    cor(resid, tr) + shift
-  })
-  pval <- c("p_upper" = sum(distr >= pearson_r)/iters,
-            "p_lower" = sum(distr <= pearson_r)/iters,
-            "twosided" = sum(abs(distr) >= abs(pearson_r))/iters)
-  return(list("estimate" = pearson_r, "distr" = distr, "pvalue"=pval))
-}
-
+#
+# #' Test the correlation between residuals and treatment
+# #'
+# #' Carry out a permutation test for the Pearson correlation between residuals and treatment.
+# #' @param prediction Vector of predicted outcomes
+# #' @param response Vector of responses
+# #' @param treatment Vector of treatments
+# #' @param iters The number of Monte Carlo iterations (default 1000)
+# #' @param shift Null shift away from 0 (a scalar constant) in correlation (default 0)
+# #' @return a list containing the results: attributes estimate (the estimated difference), distr (simulated permutation distribution), and pvalue (p-value for the test)
+# permu_pearson_shift <- function(prediction, response, treatment, iters = 1000, shift = 0){
+#   resid <- prediction-response
+#   pearson_r <- cor(resid, treatment)
+#   distr <- replicate(iters, {
+#     tr <- sample(treatment)
+#     cor(resid, tr) + shift
+#   })
+#   pval <- c("p_upper" = sum(distr >= pearson_r)/iters,
+#             "p_lower" = sum(distr <= pearson_r)/iters,
+#             "twosided" = sum(abs(distr) >= abs(pearson_r))/iters)
+#   return(list("estimate" = pearson_r, "distr" = distr, "pvalue"=pval))
+# }
+#
 
 
 #' Confidence interval for the correlation between residuals and treatment
 #'
 #' Invert the permutation test to get a \eqn{1-\alpha} confidence interval for the Pearson correlation between residuals and treatment
-#' @inheritParams permu_pearson_shift
+#' @inheritParams permu_pearson
 #' @param side Type of interval, either "both", "upper", or "lower". Default is "both".
 #' @param alpha Significance level
 #' @param verbose Verbosity switch - print the p-value and confidence interval endpoint at each step? (Default FALSE)
 #' @return a confidence interval (vector)
-permu_CI_pearson <- function(prediction, response, treatment, iters, alpha = 0.05, side = "both", verbosity = FALSE){
+permu_CI_pearson <- function(prediction, response, treatment, iters = 1000, alpha = 0.05, side = "both", verbosity = FALSE){
   resid <- prediction-response
+
   if(side == "both"){
     d1 <- permu_CI_pearson(prediction, response, treatment, iters, alpha = alpha/2, side = "lower", verbosity = verbosity)
     d2 <- permu_CI_pearson(prediction, response, treatment, iters, alpha = alpha/2, side = "upper", verbosity = verbosity)
     return(c(d1,d2))
   }
-  which_p <- which(c("lower", "upper", "both") %in% side); if(verbosity){print(side)}
-  pval <- rep(1,3)
-  d <- ifelse(side == "upper", 0.005, -0.005); shift <- d
-  while(pval[which_p] >= alpha){
-    res <- permu_pearson_shift(prediction, response, treatment, iters, shift = shift)
-    pval <- res$pvalue; shift <- shift+d
-    if(verbosity == TRUE){cat(shift-d, "\n", pval, "\n")}
+  pvalue_side <- which(c("lower", "upper", "both") %in% side); if(verbosity){print(side)}
+  res <- permu_pearson(prediction, response, treatment, iters=1)
+  init_estimate <- res$estimate
+
+  shift_permtest <- function(ss){
+    # if pval = TRUE, return ONLY the relevant p-value
+    res <- permu_pearson(prediction, treatment, response, iters = iters, shift = ss)
+    return(res$pvalue[pvalue_side])
   }
-  return(res$estimate +  shift)
+
+  # Bisection
+  if(side == "upper"){
+    l_int <- init_estimate; u_int <- 1
+  }else{
+    l_int <- -1; u_int <- init_estimate
+  }
+  d <- uniroot(function(x) {shift_permtest(x)-alpha}, lower = l_int, upper = u_int, tol = alpha/iters)
+  return(d$root)
 }
+
