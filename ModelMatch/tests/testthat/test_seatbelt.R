@@ -20,6 +20,14 @@ hist(res$perm_distribution/length(strata)); abline(v=res$diff_means, col = "red"
 d <- permu_CI_mean(groups=strata, prediction=mod$fitted, treatment = seat$law, response=seat$DriversKilled, side = "both", iters=1000, verbose = TRUE)
 abline(v = d[1], lty = 2); abline(v = d[2], lty = 2)
 
+
+### test 3: correlation between PetrolPrice and DriversKilled
+mod2 <- lm(DriversKilled~drivers+front+rear+kms+VanKilled+law, data = Seatbelts)
+res2 <- permu_pearson(prediction = mod2$fitted, response = Seatbelts[,"DriversKilled"], treatment = Seatbelts[,"PetrolPrice"])
+d2 <- permu_CI_pearson(prediction = mod2$fitted, response = Seatbelts[,"DriversKilled"], treatment = Seatbelts[,"PetrolPrice"], iters=1000, verbosity = TRUE)
+
+
+
 context("Strata")
 
 easypairs <- Matches(c(rep(0,5), rep(1,5)),1:10)
