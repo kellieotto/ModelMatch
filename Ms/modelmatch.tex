@@ -1,0 +1,175 @@
+\documentclass[12pt]{article}
+\usepackage[margin=0.75in]{geometry}
+%\usepackage[breaklinks=true]{hyperref}
+%\usepackage[html,png]{tex4ht}
+\usepackage{color}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{natbib}
+%\usepackage{array}
+%\usepackage{booktabs, multicol, multirow}
+%\usepackage[nohead]{geometry}
+\usepackage[singlespacing]{setspace}
+%\usepackage[bottom]{footmisc}
+%\usepackage{floatrow}
+%\usepackage{float}
+%\usepackage{caption}
+%\usepackage{indentfirst}
+%\usepackage{lscape}
+%\usepackage{floatrow}
+%\usepackage{epsfig}
+%\usepackage[usenames,dvipsnames,svgnames,table]{xcolor}
+\usepackage[colorlinks=true,
+            urlcolor=RawSienna,
+            linkcolor=RawSienna,
+            citecolor=NavyBlue]{hyperref}
+%\floatsetup[table]{capposition=top}
+%\floatsetup[figure]{capposition=top}
+
+
+\newcommand{\beq}{\begin{equation}}
+\newcommand{\eeq}{\end{equation}}
+
+\newcommand{\cD}{{\mathcal D}}
+\newcommand{\cF}{{\mathcal F}}
+\newcommand{\todo}[1]{{\color{red}{TO DO: \sc #1}}}
+
+\newcommand{\reals}{\mathbb{R}}
+\newcommand{\integers}{\mathbb{Z}}
+\newcommand{\naturals}{\mathbb{N}}
+\newcommand{\rationals}{\mathbb{Q}}
+
+\newcommand{\ind}[1]{1_{#1}} % Indicator function
+\newcommand{\pr}{\mathbb{P}} % Generic probability
+\newcommand{\ex}{\mathbb{E}} % Generic expectation
+\newcommand{\var}{\textrm{Var}}
+\newcommand{\cov}{\textrm{Cov}}
+
+\newcommand{\normal}{N} % for normal distribution (can probably skip this)
+\newcommand{\eps}{\varepsilon}
+\newcommand\independent{\protect\mathpalette{\protect\independenT}{\perp}}
+\def\independenT#1#2{\mathrel{\rlap{$#1#2$}\mkern2mu{#1#2}}}
+
+% Convergence
+\newcommand{\convd}{\stackrel{d}{\longrightarrow}} % convergence in distribution/law/measure
+\newcommand{\convp}{\stackrel{P}{\longrightarrow}} % convergence in probability
+\newcommand{\convas}{\stackrel{\textrm{a.s.}}{\longrightarrow}} % convergence almost surely
+
+\newcommand{\eqd}{\stackrel{d}{=}} % equal in distribution/law/measure
+\newcommand{\argmax}{\textrm{argmax}}
+\newcommand{\argmin}{\textrm{argmin}}
+\renewcommand{\baselinestretch}{1.5}
+
+\title{Model-based matching}
+\author{Kellie Ottoboni}
+\date{Draft \today}
+
+\begin{document}
+\maketitle
+
+
+\begin{abstract}
+Drawing causal inferences from nonexperimental data is difficult due to the presence of confounders, variables that affect both the selection into treatment groups and the outcome.  Matching methods can be used to subset the data to groups which are comparable with respect to important variables, but matching often fails to create sufficient balance between groups.  Model-based matching is a nonparametric method for matching which groups observations that would be alike if none had received the treatment.  We use model-based matching to conduct stratified permutation tests of association between the treatment and outcome, controlling for other variables.  Under standard assumptions from the causal inference literature, model-based matching can be used to estimate average treatment effects.
+\end{abstract}
+
+\newpage
+\section{Introduction}
+% https://docs.google.com/document/d/1En14zONJR0DHBxewCghHFbRep70vTlnKYRBlzoasCZ8/edit#
+
+Observational studies in a range of fields including social sciences, epidemiology, and ecology are used to make inferences about cause and effect.  Causal inference can be viewed as a missing data problem: one is only able to see each individual's outcome after treatment or no treatment, but not both (Holland, 1984).  To estimate the effect of treatment, one must use a control group as the counterfactual.  The treatment effect is obscured by confounders, variables that are entangled with both the treatment and outcome.  In an ideal situation, to adjust for the effect of confounders one would estimate the difference in outcomes between cases and controls who are identical with respect to all confounders, then average over the pairs.  \\
+
+In practice, the curse of dimensionality makes this impossible: studies typically account for a large number of covariates, so groups of individuals matched exactly on all pretreatment covariates can be too small to provide adequate statistical power to detect a significant treatment effect. For example, it is difficult to study the effect of a job-training program on income levels when the participants differ from non-participants on a wide range of socioeconomic variables, as well as potential unmeasured confounders (Dehejia \& Wahba, 1999).  Post hoc methods to construct a group of controls whose covariates balance the covariates in the treatment group include exact matching on covariates, matching and weighting by propensity score (Rosenbaum \& Rubin, 1983), genetic matching (Diamond \& Sekhon, 2013), and maximum-entropy weighting (Hainmueller, 2012).  These balanced control groups are then used to estimate average treatment effects using standard methods such as unadjusted differences of means or linear regression controlling for other covariates.  When matching and weighting methods fail to achieve balance in all the pretreatment covariates, estimates of the average treatment effect can be severely biased (Freedman \& Berk, 2008).  \\
+
+The proposed method improves upon existing methods by eliminating the need for parametric assumptions such as Gaussian and homoscedastic errors, linearity, and adequate support.  Observational studies often violate these key assumptions, so model-based matching may better accommodate real-world data from observational studies than traditional methods.  Additionally, it is more flexible than traditional methods that assume that the treatment is binary and outcome is continuous; by modifying the statistic used to measure the strength of association, one may use categorical or continuous treatment and outcome variables.  
+
+The method has been applied before in a study of the effect of packstock use on the amphibian population in Yosemite National Park (Matchett, Stark, et. al 2015). % http://www.nature.com/articles/srep10702
+In this paper, we develop the theory behind the testing method and discuss estimation strategies.
+
+\subsection{Notation}
+Let $Y_i(0)$ and $Y_i(1)$ be individual $i$'s potential outcomes under control and to treatment, respectively.
+$T_i$ is the treatment assigned to individual $i$.
+Then the observed outcome is $Y_i = Y_i(1)T_i + Y_i(0)(1-T_i)$.
+
+A standard assumption is exogeneity, or conditional independence:  $(Y(0), Y(1)) \independent T \mid X$.
+
+
+
+\section{Matching}
+% Do a long lit review of matching here
+
+The great thing about randomized control trials is that the potential outcomes are balanced between treatment and control groups by construction: in other words, $(Y(0), Y(1)) \independent T$.
+In observational studies, this is no longer guaranteed.
+Rosenbaum and Rubin (1983) achieve a weaker form of this balance by appealing to the propensity score, $p(x) = \pr(T = 1 \mid X = x)$.
+The propensity score is a balancing score, in the sense that $X \independent T \mid p(X)$.
+Under the assumptions of conditional independence given $X$ and overlap in the distribution of propensity scores (together, called ``strong ignorability''), they show that strong ignorability given $X$ implies strong ignorability given $p(X)$, and that by the law of iterated expectations, we can recover the overall average treatment effect.
+
+One issue is that in observational studies, the propensity score is unknown.
+One typically estimates the propensity score using logistic or probit regression models using a set of observed covariates.
+When the propensity score estimates are wrong, then estimates of the average treatment effect can be biased.
+
+We'd like to try to achieve balance in the potential outcomes some other way:
+$(Y(0), Y(1)) \independent T \mid \hat{Y}$, where $\hat{Y}$ is the model-based prediction of $Y$, absent knowledge of the treatment,  for all units.
+
+\section{Tests of Residuals}
+Tests of residuals after covariance adjustment appear in various forms in the literature.
+Rosenbaum (2002) uses residuals after fitting prediction models to stabilize estimates of treatment effects for more powerful randomization tests.
+Rosenbaum's framework is limited to the case of binary treatment, where individuals are either assigned to treatment or receive the control.
+
+Shah and Bühlmann (2015) use residuals to test for the goodness of fit of high-dimensional linear models by testing for nonlinear signals in the residuals. %http://www.statslab.cam.ac.uk/~rds37/papers/RPtests
+
+
+
+\section{Theory}
+\subsection{MM for Testing}
+
+
+\subsection{MM for Estimation}
+\subsubsection{MM Estimate when $T$ is Binary}
+Recall that
+
+$$ATE = \ex(Y_1 -Y_0 )$$
+
+Let $\hat{Y} = f(X_1, \dots, X_p)$ be a prediction of the response using no information on the treatment.
+
+
+\begin{align*}
+\tau &= \ex( \hat{Y} - Y_1 \mid T=1 ) - \ex( \hat{Y} - Y_0 \mid T=0) \\
+&= \ex\left[  \ex( \hat{Y} \mid T=1, X) - \ex(Y_1 \mid T=1, X) - \ex( \hat{Y} \mid T=0, X) + \ex( Y_0 \mid T=0, X) \right] \\
+&= \ex\left[  \ex( \hat{Y} \mid X) - \ex(Y_1 \mid T=1, X) - \ex( \hat{Y} \mid X) + \ex( Y_0 \mid T=0, X) \right] \tag*{by conditional independence, $\hat{Y} \independent T \mid X$} \\
+&= \ex\left[ - \ex(Y_1 \mid T=1, X) + \ex( Y_0 \mid T=0, X) \right] 
+\end{align*}
+
+If selection on observables holds, i.e. you are so lucky to have accounted for all confounders $X$ so that $(Y_0, Y_1) \independent T \mid X$, then
+
+\begin{align*}
+\tau &= \ex\left[ - \ex(Y_1 \mid T=1, X) + \ex( Y_0 \mid T=0, X) \right] \\
+&= \ex\left[ -\ex(Y_1 \mid X) + \ex(Y_0 \mid X)\right] \\
+&= -ATE
+\end{align*}
+
+
+\subsubsection{When $T$ is discrete}
+We can generalize the previous result when there are more than two treatments.
+
+\subsubsection{When $T$ is continuous}
+Suppose we estimate $\hat{Y} = f(X)$ and bin observations according to their predicted $\hat{Y}$.  Then within bins, we can estimate $\ex(Y \mid T)$.  Suppose that $Y = f(X) + g(X, T) + \eps(X)$, where $\eps(X) \independent T$, $\ex(\eps(X) \mid X) = 0$, and the $\eps(X)$ are uncorrelated.  If we assume this linear relationship, we obtain a generalized additive model:
+
+$$\ex(Y \mid T, X) = \ex( f(X) + g(X, T) + \eps(X) \mid T, X) = f(X) + \ex( g(X,T) \mid X, T) $$
+
+Within bins, all the $\hat{Y}$ within bins should be close to each other simply because we've used it as the score by which to stratify.  We can estimate $g_X(T)$ for each bin, too, using any method desired.
+
+$$\ex(Y \mid T) = \ex_X\left[ \ex(Y \mid T, X) \right] = \ex_X(f(X) + g(X,T) \mid T) = \ex_X(\hat{Y}) + g_{\hat{Y}}(T) $$
+where we define $g_{\hat{Y}}(T) = \ex_X(g(X, T) \mid T)$, where the expectation is taken only over $X$ with observations falling in the bin defined by $\hat{Y}$.  The equation above implies that within small enough bins of $\hat{Y}$, the expected response is the mean predicted response plus the treatment effect, which is just a function of $T$ and not of $X$. \\
+
+Estimating $g_{\hat{Y}}(T)$ separately within bins allows for $g(X, T)$ to behave nonlinearly in the covariates.
+
+Examples:
+\begin{enumerate}
+\item $f(X) = a + bX$ and the treatment effect is a multiple of $\tau$ according to the treatment dose, independent of $X$: then $Y = a + bX + \tau T + \eps$
+\item $f(X) = a + bX$ and the treatment effect is a multiple of $\tau$ according to the treatment dose interacted with $X$: then $Y = a + (b + \tau T)X + \eps$
+\item For $X<5$, we are in case 1), and for $X\geq 5$ we are in case 2).  Then for bins of $\hat{Y}$ less than $a + 5b$, we estimate $g_{\hat{Y}}(T) = \tau T$ and for bins of $\hat{Y}$ greater than $a + 5b$, we estimate $g_{\hat{Y}}(T) = \tau X T$.  
+\end{enumerate}
+
+\section{Empirical results}
+
+
+\end{document}
