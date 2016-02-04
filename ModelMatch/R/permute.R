@@ -13,12 +13,25 @@ Matches <- function(treatment, prediction){
     matches <- pairs[pairs[,1]==i,2]
     stratum <- c(i,matches)
     tr      <- treatment[stratum]
-    cbind(stratum,tr)
+    data.frame("prediction"=stratum, "treatment"=tr)
   })
   return(strata)
 }
 
-
+#' Stratify on model predictions.
+#'
+#' Note, we need sufficient distribution of the treatment values within each bin. User should check this.
+#' @param treatment Vector of treatment values
+#' @param prediction Vector of predicted outcomes
+#' @param strata Number of strata desired. Default is 5.
+#' @return a list. Each entry is a group of matched individuals with their treatments.
+Strata <- function(treatment, prediction, strata = 5){
+  breaks <- quantile(prediction, probs = seq(0, 1, by = 1/strata))
+  group_labels <- cut(prediction, breaks, include.lowest = TRUE)
+  dat <- data.frame(prediction, treatment)
+  strata <- lapply(unique(group_labels), function(g) dat[group_labels == g,])
+  return(strata)
+}
 
 ###################################################### Stratified permutation test for difference in mean residuals ######################################################
 
@@ -30,7 +43,7 @@ Matches <- function(treatment, prediction){
 permute_within_groups <- function(groups){
   permuted <- groups
   for(g in 1:length(groups)){
-    permuted[[g]][,"tr"] <- sample(permuted[[g]][,"tr"])
+    permuted[[g]][,2] <- sample(permuted[[g]][,2])
   }
   return(permuted)
 }
@@ -70,14 +83,15 @@ within_group_mean <- function(groups, prediction, response, shift = 0){
 #' @param shift Null shift (a scalar constant) for the treatment group (default 0)
 #' @return a list containing the results: attributes diff_means (the estimated difference), perm_distribution (simulated permutation distribution), and pvalue (p-value for the test)
 permu_test_mean <- function(groups, prediction, treatment, response, iters=1000, shift = 0){
-  truth <- sum(within_group_mean(groups, prediction, response))
+  GG <- length(groups)
+  truth <- sum(within_group_mean(groups, prediction, response))/GG
   response_shift <- response - shift*treatment
   perm_dist <- replicate(iters, {perm_groups <- permute_within_groups(groups)
-                                 sum(within_group_mean(perm_groups, prediction, response_shift, shift = shift))})
+                                 sum(within_group_mean(perm_groups, prediction, response_shift, shift = shift))/GG})
   pval <- c("p_upper" = sum(perm_dist >= truth)/iters,
             "p_lower" = sum(perm_dist <= truth)/iters,	#
             "twosided" = sum(abs(perm_dist) >= abs(truth))/iters)	# Alt hypoth: residual mean after law effected different from residual mean for pre-law
-  return(list("diff_means"=truth/length(groups), "perm_distribution"=perm_dist, "pvalue"=pval))
+  return(list("diff_means"=truth, "perm_distribution"=perm_dist, "pvalue"=pval))
 }
 
 
@@ -94,14 +108,14 @@ permu_test_mean <- function(groups, prediction, treatment, response, iters=1000,
 permu_CI_mean <- function(groups, prediction, response, treatment, side = "both", alpha=0.05, iters=1000){
   if(side == "both"){
     alpha <- alpha/2
-    d1 <- permu_CI_mean(groups = groups, prediction = prediction, treatment = treatment, response = response, side = "lower", alpha = alpha, iters = iters, precision = precision, verbose = verbose)
-    d2 <- permu_CI_mean(groups = groups, prediction = prediction, treatment = treatment, response = response, side = "upper", alpha = alpha, iters = iters, precision = precision, verbose = verbose)
+    d1 <- permu_CI_mean(groups = groups, prediction = prediction, treatment = treatment, response = response, side = "lower", alpha = alpha, iters = iters)
+    d2 <- permu_CI_mean(groups = groups, prediction = prediction, treatment = treatment, response = response, side = "upper", alpha = alpha, iters = iters)
     return(c(d1,d2))
   }
   pvalue_side <- which(c("lower", "upper", "both") == side)
 
   # initialize
-  tr <- sapply(groups, function(x) x[x[,"tr"] == 1,"stratum"])
+  tr <- sapply(groups, function(x) x[x[,2] == 1,"stratum"])
   res <- permu_test_mean(groups = groups, prediction = prediction, treatment = treatment, response = response, iters = 1)
   d_prev <- res$diff_means; d_next <- res$diff_means; incr <- (max(prediction-response) - min(prediction-response))/3
   shift_pval <- rep(1,3)
