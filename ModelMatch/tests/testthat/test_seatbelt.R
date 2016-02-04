@@ -17,21 +17,25 @@ res <- permu_test_mean(strata, prediction = mod$fitted, treatment = seat$law, re
 hist(res$perm_distribution/length(strata)); abline(v=res$diff_means, col = "red")
 
 
-d <- permu_CI_mean(groups=strata, prediction=mod$fitted, treatment = seat$law, response=seat$DriversKilled, side = "both", iters=1000, verbose = TRUE)
+d <- permu_CI_mean(groups=strata, prediction=mod$fitted, treatment = seat$law, response=seat$DriversKilled, side = "both", iters=1000)
 abline(v = d[1], lty = 2); abline(v = d[2], lty = 2)
 
 
 ### test 3: correlation between PetrolPrice and DriversKilled
 mod2 <- lm(DriversKilled~drivers+front+rear+kms+VanKilled+law, data = Seatbelts)
 res2 <- permu_pearson(prediction = mod2$fitted, response = Seatbelts[,"DriversKilled"], treatment = Seatbelts[,"PetrolPrice"])
-d2 <- permu_CI_pearson(prediction = mod2$fitted, response = Seatbelts[,"DriversKilled"], treatment = Seatbelts[,"PetrolPrice"], iters=1000, verbosity = TRUE)
+d2 <- permu_CI_pearson(prediction = mod2$fitted, response = Seatbelts[,"DriversKilled"], treatment = Seatbelts[,"PetrolPrice"], iters=1000)
 
 
 
 context("Strata")
 
-easypairs <- Matches(c(rep(0,5), rep(1,5)),1:10)
 test_that("Matched pairs", {
-  expect_equal((sapply(easypairs, function(x)x[2])), rep(5,5))
+  easypairs <- Matches(c(rep(0,5), rep(1,5)), 1:10)
+  expect_equal((sapply(easypairs, function(x) x[2,1])), rep(5,5))
 })
 
+test_that("Stratified groups", {
+  easypairs <- Strata(c(rep(0,5), rep(1,5)), 1:10)
+  expect_equal((sapply(easypairs, function(x) x[2,1])), 2*(1:5))
+})
