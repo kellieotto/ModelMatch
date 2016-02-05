@@ -7,13 +7,22 @@
 #' @param prediction Vector of predicted outcomes
 #' @return a list. Each entry is a group of matched individuals with their treatments.
 Matches <- function(treatment, prediction){
-  pairs <- Match(Tr = treatment, X = prediction, replace = TRUE, M=1, ties = FALSE)
-  pairs <- pairs$MatchLoopC[,1:2]
+  treated <- which(treatment == 1)
+  treated <- sample(treated)  # Put them in a random order to reduce bias
+  controls <- which(treatment == 0)
+  matched_controls <- rep(NA, length(treated))
+  ind <- 0
+  for(i in treated){
+    ind <- ind+1
+    distance <- abs(prediction[i] - prediction[controls])
+    matched_controls[ind] <- controls[which.min(distance)]
+  }
+  pairs <- cbind(treated, matched_controls)
   strata <- lapply(unique(pairs[,1]), function(i){
     matches <- pairs[pairs[,1]==i,2]
+    names(matches) <- NULL
     stratum <- c(i,matches)
-    tr      <- treatment[stratum]
-    data.frame("prediction"=stratum, "treatment"=tr)
+    data.frame("index" = stratum, "score" = prediction[stratum], "treatment" = treatment[stratum])
   })
   return(strata)
 }
@@ -28,7 +37,7 @@ Matches <- function(treatment, prediction){
 Strata <- function(treatment, prediction, strata = 5){
   breaks <- quantile(prediction, probs = seq(0, 1, by = 1/strata))
   group_labels <- cut(prediction, breaks, include.lowest = TRUE)
-  dat <- data.frame(prediction, treatment)
+  dat <- data.frame("index" = 1:length(treatment), "score" = prediction, "treatment" = treatment)
   strata <- lapply(unique(group_labels), function(g) dat[group_labels == g,])
   return(strata)
 }
