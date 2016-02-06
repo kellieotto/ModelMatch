@@ -23,3 +23,9 @@
 *.synctex.gz
 *.synctex.gz(busy)
 *.pdfsync
+*-concordance.tex
+
+## knitr extra files
+*figure/
+*cache/
+*Rplots.pdf
