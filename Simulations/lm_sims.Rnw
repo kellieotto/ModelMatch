@@ -1,0 +1,121 @@
+\documentclass[11pt]{article}
+\title{Linear Model Simulations}
+\author{Kellie Ottoboni}
+
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{graphicx,float}
+\usepackage[margin=0.75in]{geometry}
+\usepackage{bm}
+\usepackage[backend=bibtex]{biblatex}
+\usepackage{hyperref}
+\setlength{\parindent}{0cm}
+
+\begin{document}
+
+\maketitle
+<<chunk1, echo=FALSE, results ='hide', message=F, warning=F>>=
+library(knitr)
+library(xtable)
+library(ModelMatch)
+library(ggplot2)
+source("simulation_tools.R")
+opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, results = 'hide')
+@
+
+Set simulation parameters
+<<setparameters>>=
+set.seed(321)
+gamma <- c(0.01, 0.1, 1, 10)
+B <- 10
+N <- 100
+@
+
+<<f1, fig.align="center", fig.width=8, fig.height = 4>>=
+res <- simulate_estimation(gamma, B = B, N = N, "random")
+plot_est_by_gamma(res) +
+  ggtitle("Estimates of Varying Levels of Constant Additive Treatment Effects\n Random Treatment Assignment")
+tab <- sapply(gamma, function(g){
+  gamma_subset <- res[res$Gamma == g, -7]
+  apply(gamma_subset, 2, compute_rmse, g)
+})
+kable(tab)
+@
+
+<<f2, fig.align="center", fig.width=8, fig.height = 4>>=
+res2 <- simulate_estimation(gamma, B = B, N = N, "correlated", alpha = 0.5)
+plot_est_by_gamma(res2) +
+  ggtitle("Estimates of Varying Levels of Constant Additive Treatment Effects\n Treatment Assignment with Cov(T, X1) = 0.5")
+tab2 <- sapply(gamma, function(g){
+  gamma_subset <- res2[res2$Gamma == g, -7]
+  apply(gamma_subset, 2, compute_rmse, g)
+})
+kable(tab2)
+@
+
+<<f3, fig.align="center", fig.width=8, fig.height = 4>>=
+res3 <- simulate_estimation(gamma, B = B, N = N, "correlated", alpha = -0.9)
+plot_est_by_gamma(res3) +
+  ggtitle("Estimates of Varying Levels of Constant Additive Treatment Effects\n Treatment Assignment with Cov(T, X1) = -0.9")
+tab3 <- sapply(gamma, function(g){
+  gamma_subset <- res3[res3$Gamma == g, -7]
+  apply(gamma_subset, 2, compute_rmse, g)
+})
+kable(tab3)
+@
+
+<<f4, fig.align="center", fig.width=8, fig.height = 4>>=
+res4 <- simulate_estimation(gamma, B = B, N = N, "misspecified pscore", alpha = 0.5)
+plot_est_by_gamma(res4) +
+  ggtitle("Estimates of Varying Levels of Constant Additive Treatment Effects\n c\n Misspecified Propensity Score Model")
+sapply(gamma, function(g){
+  gamma_subset <- res4[res4$Gamma == g, -7]
+  apply(gamma_subset, 2, compute_rmse, g)
+})
+kable(tab4)
+@
+
+<<f5, fig.align="center", fig.width=8, fig.height = 4>>=
+res5 <- simulate_estimation(gamma, B = B, N = N, selection="random", errors="heteroskedastic")
+plot_est_by_gamma(res5) +
+  ggtitle("Estimates of Varying Levels of Constant Additive Treatment Effects\n Random Treatment Assignment\n Heteroskedastic Errors")
+tab5 <- sapply(gamma, function(g){
+  gamma_subset <- res5[res5$Gamma == g, -7]
+  apply(gamma_subset, 2, compute_rmse, g)
+})
+kable(tab5)
+@
+
+<<f6, fig.align="center", fig.width=8, fig.height = 4>>=
+res6 <- simulate_estimation(gamma, B = B, N = N, selection="random", errors="heavy")
+plot_est_by_gamma(res6) +
+  ggtitle("Estimates of Varying Levels of Constant Additive Treatment Effects\n Random Treatment Assignment\n Laplacian Errors")
+tab6 <- sapply(gamma, function(g){
+  gamma_subset <- res6[res6$Gamma == g, -7]
+  apply(gamma_subset, 2, compute_rmse, g)
+})
+kable(tab6)
+@
+
+<<f7, fig.align="center", fig.width=8, fig.height = 4>>=
+res7 <- simulate_estimation(gamma, B = B, N = N, selection="correlated", errors="heavy")
+plot_est_by_gamma(res7) +
+  ggtitle("Estimates of Varying Levels of Constant Additive Treatment Effects\n Treatment Assignment with Cov(T, X1) = 0.5\n Laplacian Errors")
+tab7 <- sapply(gamma, function(g){
+  gamma_subset <- res7[res7$Gamma == g, -7]
+  apply(gamma_subset, 2, compute_rmse, g)
+})
+kable(tab7)
+@
+
+<<f8, fig.align="center", fig.width=8, fig.height = 4>>=
+res8 <- simulate_estimation(gamma, B = B, N = N, selection="correlated", errors="heteroskedastic")
+plot_est_by_gamma(res8) +
+  ggtitle("Estimates of Varying Levels of Constant Additive Treatment Effects\n Treatment Assignment with Cov(T, X1) = 0.5\n Heteroskedastic Errors")
+tab8 <- sapply(gamma, function(g){
+  gamma_subset <- res8[res8$Gamma == g, -7]
+  apply(gamma_subset, 2, compute_rmse, g)
+})
+kable(tab8)
+@
+
+\end{document}
