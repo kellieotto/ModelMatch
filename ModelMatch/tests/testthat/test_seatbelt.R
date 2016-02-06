@@ -27,15 +27,3 @@ res2 <- permu_pearson(prediction = mod2$fitted, response = Seatbelts[,"DriversKi
 d2 <- permu_CI_pearson(prediction = mod2$fitted, response = Seatbelts[,"DriversKilled"], treatment = Seatbelts[,"PetrolPrice"], iters=1000)
 
 
-
-context("Strata")
-
-test_that("Matched pairs", {
-  easypairs <- Matches(c(rep(0,5), rep(1,5)), 1:10)
-  expect_equal((sapply(easypairs, function(x) x[2,1])), rep(5,5))
-})
-
-test_that("Stratified groups", {
-  easypairs <- Strata(c(rep(0,5), rep(1,5)), 1:10)
-  expect_equal((sapply(easypairs, function(x) x[2,1])), 2*(1:5))
-})
