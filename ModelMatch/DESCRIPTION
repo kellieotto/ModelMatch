@@ -11,3 +11,4 @@ LazyData: true
 Suggests:
     testthat,
     Matching
+RoxygenNote: 5.0.1
