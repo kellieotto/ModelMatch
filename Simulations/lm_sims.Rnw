@@ -23,99 +23,161 @@ opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, results = 'hide')
 @
 
 Set simulation parameters
-<<setparameters>>=
+<<setparameters, echo=TRUE>>=
 set.seed(321)
 gamma <- c(0.01, 0.1, 1, 10)
 B <- 10
 N <- 100
 @
 
-<<f1, fig.align="center", fig.width=8, fig.height = 4>>=
+\section{Gaussian Errors in the Linear Model}
+<<f1, fig.align="center", fig.width=8, fig.height=8>>=
 res <- simulate_estimation(gamma, B = B, N = N, "random")
 plot_est_by_gamma(res) +
   ggtitle("Estimates of Varying Levels of Constant Additive Treatment Effects\n Random Treatment Assignment")
+@
+<<t1, results="asis">>=
 tab <- sapply(gamma, function(g){
   gamma_subset <- res[res$Gamma == g, -7]
   apply(gamma_subset, 2, compute_rmse, g)
 })
-kable(tab)
+colnames(tab) <- gamma
+print(xtable(tab, digits = 3,
+      label = "tab:f1",
+      caption = "RMSE for various treatment effects"),
+      include.rownames = TRUE,
+      include.colnames = TRUE)
 @
 
-<<f2, fig.align="center", fig.width=8, fig.height = 4>>=
+<<f2, fig.align="center", fig.width=8, fig.height=8>>=
 res2 <- simulate_estimation(gamma, B = B, N = N, "correlated", alpha = 0.5)
 plot_est_by_gamma(res2) +
   ggtitle("Estimates of Varying Levels of Constant Additive Treatment Effects\n Treatment Assignment with Cov(T, X1) = 0.5")
+@
+<<t2, results="asis">>=
 tab2 <- sapply(gamma, function(g){
   gamma_subset <- res2[res2$Gamma == g, -7]
   apply(gamma_subset, 2, compute_rmse, g)
 })
-kable(tab2)
+colnames(tab2) <- gamma
+print(xtable(tab2, digits = 3,
+      label = "tab:f2",
+      caption = "RMSE for various treatment effects"),
+      include.rownames = TRUE,
+      include.colnames = TRUE)
 @
 
-<<f3, fig.align="center", fig.width=8, fig.height = 4>>=
-res3 <- simulate_estimation(gamma, B = B, N = N, "correlated", alpha = -0.9)
+
+% Why doesn't this one work?
+<<f3, eval=FALSE, fig.align="center", fig.width=8, fig.height=8>>=
+res3 <- simulate_estimation(gamma, B = B, N = N, "correlated", alpha = -0.75)
 plot_est_by_gamma(res3) +
-  ggtitle("Estimates of Varying Levels of Constant Additive Treatment Effects\n Treatment Assignment with Cov(T, X1) = -0.9")
+  ggtitle("Estimates of Varying Levels of Constant Additive Treatment Effects\n Treatment Assignment with Cov(T, X1) = -0.75")
+@
+<<t3, results="asis", eval=FALSE>>=
 tab3 <- sapply(gamma, function(g){
   gamma_subset <- res3[res3$Gamma == g, -7]
   apply(gamma_subset, 2, compute_rmse, g)
 })
-kable(tab3)
+colnames(tab3) <- gamma
+print(xtable(tab3, digits = 3,
+      label = "tab:f3",
+      caption = "RMSE for various treatment effects"),
+      include.rownames = TRUE,
+      include.colnames = TRUE)
 @
 
-<<f4, fig.align="center", fig.width=8, fig.height = 4>>=
+\section{Misspecified Propensity Score Estimates}
+<<f4, fig.align="center", fig.width=8, fig.height=8>>=
 res4 <- simulate_estimation(gamma, B = B, N = N, "misspecified pscore", alpha = 0.5)
 plot_est_by_gamma(res4) +
-  ggtitle("Estimates of Varying Levels of Constant Additive Treatment Effects\n c\n Misspecified Propensity Score Model")
-sapply(gamma, function(g){
+  ggtitle("Estimates of Varying Levels of Constant Additive Treatment Effects\n Treatment Assignment with Cov(T, X1) = 0.5\n Misspecified Propensity Score Model")
+@
+<<t4, results="asis">>=
+tab4 <- sapply(gamma, function(g){
   gamma_subset <- res4[res4$Gamma == g, -7]
   apply(gamma_subset, 2, compute_rmse, g)
 })
-kable(tab4)
+colnames(tab4) <- gamma
+print(xtable(tab4, digits = 3,
+      label = "tab:f4",
+      caption = "RMSE for various treatment effects"),
+      include.rownames = TRUE,
+      include.colnames = TRUE)
 @
 
-<<f5, fig.align="center", fig.width=8, fig.height = 4>>=
+\section{Heteroskedastic Linear Model Errors}
+<<f5, fig.align="center", fig.width=8, fig.height=8>>=
 res5 <- simulate_estimation(gamma, B = B, N = N, selection="random", errors="heteroskedastic")
 plot_est_by_gamma(res5) +
   ggtitle("Estimates of Varying Levels of Constant Additive Treatment Effects\n Random Treatment Assignment\n Heteroskedastic Errors")
+@
+<<t5, results="asis">>=
 tab5 <- sapply(gamma, function(g){
   gamma_subset <- res5[res5$Gamma == g, -7]
   apply(gamma_subset, 2, compute_rmse, g)
 })
-kable(tab5)
+colnames(tab5) <- gamma
+print(xtable(tab5, digits = 3,
+      label = "tab:f5",
+      caption = "RMSE for various treatment effects"),
+      include.rownames = TRUE,
+      include.colnames = TRUE)
 @
 
-<<f6, fig.align="center", fig.width=8, fig.height = 4>>=
-res6 <- simulate_estimation(gamma, B = B, N = N, selection="random", errors="heavy")
-plot_est_by_gamma(res6) +
-  ggtitle("Estimates of Varying Levels of Constant Additive Treatment Effects\n Random Treatment Assignment\n Laplacian Errors")
-tab6 <- sapply(gamma, function(g){
-  gamma_subset <- res6[res6$Gamma == g, -7]
-  apply(gamma_subset, 2, compute_rmse, g)
-})
-kable(tab6)
-@
-
-<<f7, fig.align="center", fig.width=8, fig.height = 4>>=
-res7 <- simulate_estimation(gamma, B = B, N = N, selection="correlated", errors="heavy")
-plot_est_by_gamma(res7) +
-  ggtitle("Estimates of Varying Levels of Constant Additive Treatment Effects\n Treatment Assignment with Cov(T, X1) = 0.5\n Laplacian Errors")
-tab7 <- sapply(gamma, function(g){
-  gamma_subset <- res7[res7$Gamma == g, -7]
-  apply(gamma_subset, 2, compute_rmse, g)
-})
-kable(tab7)
-@
-
-<<f8, fig.align="center", fig.width=8, fig.height = 4>>=
+<<f8, fig.align="center", fig.width=8, fig.height=8>>=
 res8 <- simulate_estimation(gamma, B = B, N = N, selection="correlated", errors="heteroskedastic")
 plot_est_by_gamma(res8) +
   ggtitle("Estimates of Varying Levels of Constant Additive Treatment Effects\n Treatment Assignment with Cov(T, X1) = 0.5\n Heteroskedastic Errors")
+@
+<<t8, results="asis">>=
 tab8 <- sapply(gamma, function(g){
   gamma_subset <- res8[res8$Gamma == g, -7]
   apply(gamma_subset, 2, compute_rmse, g)
 })
-kable(tab8)
+colnames(tab8) <- gamma
+print(xtable(tab8, digits = 3,
+      label = "tab:f8",
+      caption = "RMSE for various treatment effects"),
+      include.rownames = TRUE,
+      include.colnames = TRUE)
+@
+
+\section{Heavy-tailed Linear Model Errors}
+<<f6, fig.align="center", fig.width=8, fig.height=8>>=
+res6 <- simulate_estimation(gamma, B = B, N = N, selection="random", errors="heavy")
+plot_est_by_gamma(res6) +
+  ggtitle("Estimates of Varying Levels of Constant Additive Treatment Effects\n Random Treatment Assignment\n Laplacian Errors")
+@
+<<t6, results="asis">>=
+tab6 <- sapply(gamma, function(g){
+  gamma_subset <- res6[res6$Gamma == g, -7]
+  apply(gamma_subset, 2, compute_rmse, g)
+})
+colnames(tab6) <- gamma
+print(xtable(tab6, digits = 3,
+      label = "tab:f6",
+      caption = "RMSE for various treatment effects"),
+      include.rownames = TRUE,
+      include.colnames = TRUE)
+@
+
+<<f7, fig.align="center", fig.width=8, fig.height=8>>=
+res7 <- simulate_estimation(gamma, B = B, N = N, selection="correlated", errors="heavy")
+plot_est_by_gamma(res7) +
+  ggtitle("Estimates of Varying Levels of Constant Additive Treatment Effects\n Treatment Assignment with Cov(T, X1) = 0.5\n Laplacian Errors")
+@
+<<t7, results="asis">>=
+tab7 <- sapply(gamma, function(g){
+  gamma_subset <- res7[res7$Gamma == g, -7]
+  apply(gamma_subset, 2, compute_rmse, g)
+})
+colnames(tab7) <- gamma
+print(xtable(tab7, digits = 3,
+      label = "tab:f7",
+      caption = "RMSE for various treatment effects"),
+      include.rownames = TRUE,
+      include.colnames = TRUE)
 @
 
 \end{document}

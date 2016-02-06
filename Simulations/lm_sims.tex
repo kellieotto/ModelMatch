@@ -1,0 +1,305 @@
+\documentclass[11pt]{article}\usepackage[]{graphicx}\usepackage[]{color}
+%% maxwidth is the original width if it is less than linewidth
+%% otherwise use linewidth (to make sure the graphics do not exceed the margin)
+\makeatletter
+\def\maxwidth{ %
+  \ifdim\Gin@nat@width>\linewidth
+    \linewidth
+  \else
+    \Gin@nat@width
+  \fi
+}
+\makeatother
+
+\definecolor{fgcolor}{rgb}{0.345, 0.345, 0.345}
+\newcommand{\hlnum}[1]{\textcolor[rgb]{0.686,0.059,0.569}{#1}}%
+\newcommand{\hlstr}[1]{\textcolor[rgb]{0.192,0.494,0.8}{#1}}%
+\newcommand{\hlcom}[1]{\textcolor[rgb]{0.678,0.584,0.686}{\textit{#1}}}%
+\newcommand{\hlopt}[1]{\textcolor[rgb]{0,0,0}{#1}}%
+\newcommand{\hlstd}[1]{\textcolor[rgb]{0.345,0.345,0.345}{#1}}%
+\newcommand{\hlkwa}[1]{\textcolor[rgb]{0.161,0.373,0.58}{\textbf{#1}}}%
+\newcommand{\hlkwb}[1]{\textcolor[rgb]{0.69,0.353,0.396}{#1}}%
+\newcommand{\hlkwc}[1]{\textcolor[rgb]{0.333,0.667,0.333}{#1}}%
+\newcommand{\hlkwd}[1]{\textcolor[rgb]{0.737,0.353,0.396}{\textbf{#1}}}%
+
+\usepackage{framed}
+\makeatletter
+\newenvironment{kframe}{%
+ \def\at@end@of@kframe{}%
+ \ifinner\ifhmode%
+  \def\at@end@of@kframe{\end{minipage}}%
+  \begin{minipage}{\columnwidth}%
+ \fi\fi%
+ \def\FrameCommand##1{\hskip\@totalleftmargin \hskip-\fboxsep
+ \colorbox{shadecolor}{##1}\hskip-\fboxsep
+     % There is no \\@totalrightmargin, so:
+     \hskip-\linewidth \hskip-\@totalleftmargin \hskip\columnwidth}%
+ \MakeFramed {\advance\hsize-\width
+   \@totalleftmargin\z@ \linewidth\hsize
+   \@setminipage}}%
+ {\par\unskip\endMakeFramed%
+ \at@end@of@kframe}
+\makeatother
+
+\definecolor{shadecolor}{rgb}{.97, .97, .97}
+\definecolor{messagecolor}{rgb}{0, 0, 0}
+\definecolor{warningcolor}{rgb}{1, 0, 1}
+\definecolor{errorcolor}{rgb}{1, 0, 0}
+\newenvironment{knitrout}{}{} % an empty environment to be redefined in TeX
+
+\usepackage{alltt}
+\title{Linear Model Simulations}
+\author{Kellie Ottoboni}
+
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{graphicx,float}
+\usepackage[margin=0.75in]{geometry}
+\usepackage{bm}
+\usepackage[backend=bibtex]{biblatex}
+\usepackage{hyperref}
+\setlength{\parindent}{0cm}
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\begin{document}
+
+\maketitle
+
+
+Set simulation parameters
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlkwd{set.seed}\hlstd{(}\hlnum{321}\hlstd{)}
+\hlstd{gamma} \hlkwb{<-} \hlkwd{c}\hlstd{(}\hlnum{0.01}\hlstd{,} \hlnum{0.1}\hlstd{,} \hlnum{1}\hlstd{,} \hlnum{10}\hlstd{)}
+\hlstd{B} \hlkwb{<-} \hlnum{10}
+\hlstd{N} \hlkwb{<-} \hlnum{100}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+
+\section{Gaussian Errors in the Linear Model}
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}
+
+{\centering \includegraphics[width=\maxwidth]{figure/f1-1} 
+
+}
+
+
+
+\end{knitrout}
+% latex table generated in R 3.2.0 by xtable 1.8-0 package
+% Fri Feb  5 17:04:54 2016
+\begin{table}[ht]
+\centering
+\begin{tabular}{rrrrr}
+  \hline
+ & 0.01 & 0.1 & 1 & 10 \\ 
+  \hline
+MM Pairs & 0.290 & 0.349 & 0.294 & 0.215 \\ 
+  MM Strata & 0.208 & 0.236 & 0.267 & 0.178 \\ 
+  Pscore Pairs & 0.986 & 1.379 & 0.747 & 0.634 \\ 
+  Pscore Strata & 0.334 & 0.461 & 0.451 & 0.479 \\ 
+  Ebal & 0.222 & 0.227 & 0.291 & 0.198 \\ 
+  Unadjusted & 1.863 & 1.748 & 1.603 & 2.053 \\ 
+   \hline
+\end{tabular}
+\caption{RMSE for various treatment effects} 
+\label{tab:f1}
+\end{table}
+
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}
+
+{\centering \includegraphics[width=\maxwidth]{figure/f2-1} 
+
+}
+
+
+
+\end{knitrout}
+% latex table generated in R 3.2.0 by xtable 1.8-0 package
+% Fri Feb  5 17:04:57 2016
+\begin{table}[ht]
+\centering
+\begin{tabular}{rrrrr}
+  \hline
+ & 0.01 & 0.1 & 1 & 10 \\ 
+  \hline
+MM Pairs & 0.235 & 0.225 & 0.326 & 0.291 \\ 
+  MM Strata & 0.218 & 0.188 & 0.285 & 0.256 \\ 
+  Pscore Pairs & 1.604 & 1.128 & 1.203 & 2.347 \\ 
+  Pscore Strata & 0.590 & 0.878 & 0.785 & 1.176 \\ 
+  Ebal & 0.237 & 0.191 & 0.244 & 0.271 \\ 
+  Unadjusted & 2.598 & 2.350 & 2.095 & 2.107 \\ 
+   \hline
+\end{tabular}
+\caption{RMSE for various treatment effects} 
+\label{tab:f2}
+\end{table}
+
+
+
+% Why doesn't this one work?
+
+
+
+\section{Misspecified Propensity Score Estimates}
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}
+
+{\centering \includegraphics[width=\maxwidth]{figure/f4-1} 
+
+}
+
+
+
+\end{knitrout}
+% latex table generated in R 3.2.0 by xtable 1.8-0 package
+% Fri Feb  5 17:04:59 2016
+\begin{table}[ht]
+\centering
+\begin{tabular}{rrrrr}
+  \hline
+ & 0.01 & 0.1 & 1 & 10 \\ 
+  \hline
+MM Pairs & 0.272 & 0.215 & 0.301 & 0.278 \\ 
+  MM Strata & 0.230 & 0.174 & 0.128 & 0.220 \\ 
+  Pscore Pairs & 1.829 & 1.139 & 2.080 & 2.091 \\ 
+  Pscore Strata & 0.613 & 0.647 & 0.876 & 0.785 \\ 
+  Ebal & 0.248 & 0.177 & 0.164 & 0.206 \\ 
+  Unadjusted & 1.194 & 1.553 & 1.462 & 2.086 \\ 
+   \hline
+\end{tabular}
+\caption{RMSE for various treatment effects} 
+\label{tab:f4}
+\end{table}
+
+
+\section{Heteroskedastic Linear Model Errors}
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}
+
+{\centering \includegraphics[width=\maxwidth]{figure/f5-1} 
+
+}
+
+
+
+\end{knitrout}
+% latex table generated in R 3.2.0 by xtable 1.8-0 package
+% Fri Feb  5 17:05:02 2016
+\begin{table}[ht]
+\centering
+\begin{tabular}{rrrrr}
+  \hline
+ & 0.01 & 0.1 & 1 & 10 \\ 
+  \hline
+MM Pairs & 0.360 & 0.471 & 0.514 & 0.226 \\ 
+  MM Strata & 0.327 & 0.392 & 0.347 & 0.238 \\ 
+  Pscore Pairs & 1.034 & 0.804 & 1.255 & 0.835 \\ 
+  Pscore Strata & 0.545 & 0.684 & 0.666 & 0.403 \\ 
+  Ebal & 0.308 & 0.382 & 0.359 & 0.190 \\ 
+  Unadjusted & 1.384 & 1.913 & 1.117 & 0.871 \\ 
+   \hline
+\end{tabular}
+\caption{RMSE for various treatment effects} 
+\label{tab:f5}
+\end{table}
+
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}
+
+{\centering \includegraphics[width=\maxwidth]{figure/f8-1} 
+
+}
+
+
+
+\end{knitrout}
+% latex table generated in R 3.2.0 by xtable 1.8-0 package
+% Fri Feb  5 17:05:04 2016
+\begin{table}[ht]
+\centering
+\begin{tabular}{rrrrr}
+  \hline
+ & 0.01 & 0.1 & 1 & 10 \\ 
+  \hline
+MM Pairs & 0.320 & 0.406 & 0.252 & 0.352 \\ 
+  MM Strata & 0.250 & 0.356 & 0.210 & 0.256 \\ 
+  Pscore Pairs & 1.558 & 1.854 & 1.794 & 1.678 \\ 
+  Pscore Strata & 0.431 & 0.796 & 0.581 & 1.150 \\ 
+  Ebal & 0.229 & 0.351 & 0.199 & 0.317 \\ 
+  Unadjusted & 2.497 & 2.328 & 1.703 & 2.152 \\ 
+   \hline
+\end{tabular}
+\caption{RMSE for various treatment effects} 
+\label{tab:f8}
+\end{table}
+
+
+\section{Heavy-tailed Linear Model Errors}
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}
+
+{\centering \includegraphics[width=\maxwidth]{figure/f6-1} 
+
+}
+
+
+
+\end{knitrout}
+% latex table generated in R 3.2.0 by xtable 1.8-0 package
+% Fri Feb  5 17:05:07 2016
+\begin{table}[ht]
+\centering
+\begin{tabular}{rrrrr}
+  \hline
+ & 0.01 & 0.1 & 1 & 10 \\ 
+  \hline
+MM Pairs & 0.219 & 0.325 & 0.308 & 0.269 \\ 
+  MM Strata & 0.350 & 0.177 & 0.325 & 0.287 \\ 
+  Pscore Pairs & 0.830 & 0.971 & 1.158 & 0.737 \\ 
+  Pscore Strata & 0.402 & 0.464 & 0.728 & 0.510 \\ 
+  Ebal & 0.346 & 0.177 & 0.293 & 0.288 \\ 
+  Unadjusted & 1.118 & 1.742 & 1.558 & 1.420 \\ 
+   \hline
+\end{tabular}
+\caption{RMSE for various treatment effects} 
+\label{tab:f6}
+\end{table}
+
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}
+
+{\centering \includegraphics[width=\maxwidth]{figure/f7-1} 
+
+}
+
+
+
+\end{knitrout}
+% latex table generated in R 3.2.0 by xtable 1.8-0 package
+% Fri Feb  5 17:05:10 2016
+\begin{table}[ht]
+\centering
+\begin{tabular}{rrrrr}
+  \hline
+ & 0.01 & 0.1 & 1 & 10 \\ 
+  \hline
+MM Pairs & 0.409 & 0.508 & 0.315 & 0.307 \\ 
+  MM Strata & 0.269 & 0.445 & 0.378 & 0.403 \\ 
+  Pscore Pairs & 1.595 & 1.785 & 2.158 & 1.955 \\ 
+  Pscore Strata & 0.536 & 0.780 & 0.773 & 0.815 \\ 
+  Ebal & 0.285 & 0.462 & 0.353 & 0.448 \\ 
+  Unadjusted & 1.467 & 1.488 & 1.781 & 1.889 \\ 
+   \hline
+\end{tabular}
+\caption{RMSE for various treatment effects} 
+\label{tab:f7}
+\end{table}
+
+
+\end{document}
