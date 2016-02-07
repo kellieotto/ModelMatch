@@ -52,7 +52,7 @@ Strata <- function(treatment, prediction, strata = 5){
 permute_within_groups <- function(groups){
   permuted <- groups
   for(g in 1:length(groups)){
-    permuted[[g]][,2] <- sample(permuted[[g]][,2])
+    permuted[[g]][,"treatment"] <- sample(groups[[g]][,"treatment"])
   }
   return(permuted)
 }
@@ -72,8 +72,8 @@ within_group_mean <- function(groups, prediction, response, shift = 0){
   ###        shift      = null shift (constant scalar) for treatment group (default 0)
   resid <- prediction-response
   sapply(groups, function(g){
-    treated <- g[g[,2]==1,1]
-    ctrl    <- g[g[,2]==0,1]
+    treated <- g[g[,"treatment"]==1,"index"]
+    ctrl    <- g[g[,"treatment"]==0,"index"]
     return(-1*(mean(resid[treated] - shift) - mean(resid[ctrl])))
   })
 }
@@ -98,8 +98,8 @@ permu_test_mean <- function(groups, prediction, treatment, response, iters=1000,
   perm_dist <- replicate(iters, {perm_groups <- permute_within_groups(groups)
                                  sum(within_group_mean(perm_groups, prediction, response_shift, shift = shift))/GG})
   pval <- c("p_upper" = sum(perm_dist >= truth)/iters,
-            "p_lower" = sum(perm_dist <= truth)/iters,	#
-            "twosided" = sum(abs(perm_dist) >= abs(truth))/iters)	# Alt hypoth: residual mean after law effected different from residual mean for pre-law
+            "p_lower" = sum(perm_dist <= truth)/iters)
+  pval <- c(pval, "twosided" = min(1, 2*min(pval)))
   return(list("diff_means"=truth, "perm_distribution"=perm_dist, "pvalue"=pval))
 }
 
