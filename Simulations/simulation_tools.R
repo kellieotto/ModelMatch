@@ -14,7 +14,8 @@ compute_diffmeans <- function(matches, Y){
 }
 
 compute_rmse <- function(x, truth){
-  sqrt(mean((x-truth)^2))
+  x <- x[!is.nan(x)]
+  sqrt(mean((x-truth)^2, na.rm=TRUE))
 }
 
 ### Main simulation function
@@ -47,6 +48,7 @@ simulate_estimation <- function(gamma, B, N, selection = "random", alpha = 0.5, 
   for(g in gamma){
     print(paste("Gamma = ", g))
     for(b in 1:B){
+      print(rownum)
       rownum <- rownum + 1
 
       # Generate Xs and epsilon
@@ -91,6 +93,7 @@ simulate_estimation <- function(gamma, B, N, selection = "random", alpha = 0.5, 
       Yhat <- predict(mm_model, dat)
 
       # Estimate propensity score
+      print(cor(X1, tr))
       pscore_mod <- glm(tr~X1+X2, dat, family=binomial(link="probit"))
       pscore <- predict(pscore_mod, dat, type = "response")
 
@@ -101,8 +104,13 @@ simulate_estimation <- function(gamma, B, N, selection = "random", alpha = 0.5, 
       pscore_strata <- Strata(treatment = tr, prediction = pscore, strata = 5)
 
       # Create entropy balanced groups
-      eb.out <- ebalance(Treatment = tr, X = cbind(X1, X2))
-
+      eb.out <- try(ebalance(Treatment = tr, X = cbind(X1, X2)),
+                    silent=FALSE)
+      if(class(eb.out)=="try-error"){
+        cat("EB did not converge in this simulation\n")
+      }else{
+        estimate[rownum, "Ebal"] <- mean(Y[tr==1]) - weighted.mean(Y[tr==0], w=eb.out$w)
+      }
 
       # Estimates
       estimate[rownum, "MM Pairs"] <- compute_diffmeans(mm_matches, Y-Yhat)
@@ -111,7 +119,6 @@ simulate_estimation <- function(gamma, B, N, selection = "random", alpha = 0.5, 
       estimate[rownum, "Pscore Pairs"] <- compute_diffmeans(pscore_matches, Y)
       estimate[rownum, "Pscore Strata"] <- compute_diffmeans(pscore_strata, Y)
 
-      estimate[rownum, "Ebal"] <- mean(Y[tr==1]) - weighted.mean(Y[tr==0], w=eb.out$w)
       estimate[rownum, "Unadjusted"] <- mean(Y[tr==1]) -  mean(Y[tr==0])
     }
   }
@@ -128,6 +135,5 @@ plot_est_by_gamma <- function(estimates){
     facet_wrap(~Gamma) +
     geom_hline(aes(yintercept = Gamma), linetype = "dashed") +
     xlab("Estimation Method") +
-    ylab("Estimate") +
-    coord_flip()
+    ylab("Estimate")
 }

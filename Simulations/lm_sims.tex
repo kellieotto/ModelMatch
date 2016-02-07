@@ -70,7 +70,7 @@ Set simulation parameters
 \begin{alltt}
 \hlkwd{set.seed}\hlstd{(}\hlnum{321}\hlstd{)}
 \hlstd{gamma} \hlkwb{<-} \hlkwd{c}\hlstd{(}\hlnum{0.01}\hlstd{,} \hlnum{0.1}\hlstd{,} \hlnum{1}\hlstd{,} \hlnum{10}\hlstd{)}
-\hlstd{B} \hlkwb{<-} \hlnum{10}
+\hlstd{B} \hlkwb{<-} \hlnum{1000}
 \hlstd{N} \hlkwb{<-} \hlnum{100}
 \end{alltt}
 \end{kframe}
@@ -88,22 +88,22 @@ Set simulation parameters
 
 \end{knitrout}
 % latex table generated in R 3.2.0 by xtable 1.8-0 package
-% Fri Feb  5 17:04:54 2016
+% Sat Feb  6 12:11:50 2016
 \begin{table}[ht]
 \centering
 \begin{tabular}{rrrrr}
   \hline
  & 0.01 & 0.1 & 1 & 10 \\ 
   \hline
-MM Pairs & 0.290 & 0.349 & 0.294 & 0.215 \\ 
-  MM Strata & 0.208 & 0.236 & 0.267 & 0.178 \\ 
-  Pscore Pairs & 0.986 & 1.379 & 0.747 & 0.634 \\ 
-  Pscore Strata & 0.334 & 0.461 & 0.451 & 0.479 \\ 
-  Ebal & 0.222 & 0.227 & 0.291 & 0.198 \\ 
-  Unadjusted & 1.863 & 1.748 & 1.603 & 2.053 \\ 
+MM Pairs & 0.257 & 0.263 & 0.264 & 0.260 \\ 
+  MM Strata & 0.203 & 0.200 & 0.210 & 0.204 \\ 
+  Pscore Pairs & 1.030 & 1.033 & 1.139 & 1.043 \\ 
+  Pscore Strata & 0.520 & 0.548 & 0.519 & 0.512 \\ 
+  Ebal & 0.206 & 0.201 & 0.212 & 0.205 \\ 
+  Unadjusted & 1.683 & 1.705 & 1.646 & 1.579 \\ 
    \hline
 \end{tabular}
-\caption{RMSE for various treatment effects} 
+\caption{RMSE for various treatment effects; Random Treatment Assignment} 
 \label{tab:f1}
 \end{table}
 
@@ -119,29 +119,57 @@ MM Pairs & 0.290 & 0.349 & 0.294 & 0.215 \\
 
 \end{knitrout}
 % latex table generated in R 3.2.0 by xtable 1.8-0 package
-% Fri Feb  5 17:04:57 2016
+% Sat Feb  6 17:47:38 2016
 \begin{table}[ht]
 \centering
 \begin{tabular}{rrrrr}
   \hline
  & 0.01 & 0.1 & 1 & 10 \\ 
   \hline
-MM Pairs & 0.235 & 0.225 & 0.326 & 0.291 \\ 
-  MM Strata & 0.218 & 0.188 & 0.285 & 0.256 \\ 
-  Pscore Pairs & 1.604 & 1.128 & 1.203 & 2.347 \\ 
-  Pscore Strata & 0.590 & 0.878 & 0.785 & 1.176 \\ 
-  Ebal & 0.237 & 0.191 & 0.244 & 0.271 \\ 
-  Unadjusted & 2.598 & 2.350 & 2.095 & 2.107 \\ 
+MM Pairs & 0.287 & 0.291 & 0.296 & 0.296 \\ 
+  MM Strata & 0.239 & 0.234 & 0.234 & 0.237 \\ 
+  Pscore Pairs & 1.736 & 1.661 & 1.686 & 1.701 \\ 
+  Pscore Strata & 0.705 & 0.735 & 0.683 & 0.689 \\ 
+  Ebal & 0.250 & 0.243 & 0.251 & 0.248 \\ 
+  Unadjusted & 2.132 & 2.220 & 2.238 & 2.229 \\ 
    \hline
 \end{tabular}
-\caption{RMSE for various treatment effects} 
+\caption{RMSE for various treatment effects; Treatment Assignment with $cov(T, X_1) = 0.5$} 
 \label{tab:f2}
 \end{table}
 
 
 
 % Why doesn't this one work?
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}
 
+{\centering \includegraphics[width=\maxwidth]{figure/f3-1} 
+
+}
+
+
+
+\end{knitrout}
+% latex table generated in R 3.2.0 by xtable 1.8-0 package
+% Sat Feb  6 17:50:31 2016
+\begin{table}[ht]
+\centering
+\begin{tabular}{rrrrr}
+  \hline
+ & 0.01 & 0.1 & 1 & 10 \\ 
+  \hline
+MM Pairs & 0.302 & 0.313 & 0.292 & 0.304 \\ 
+  MM Strata & 0.256 & 0.266 & 0.245 & 0.262 \\ 
+  Pscore Pairs & 2.143 & 2.160 & 2.134 & 2.164 \\ 
+  Pscore Strata & 0.945 & 1.057 & 0.991 & 0.967 \\ 
+  Ebal & 0.310 & 0.319 & 0.300 & 0.308 \\ 
+  Unadjusted & 2.555 & 2.476 & 2.564 & 2.489 \\ 
+   \hline
+\end{tabular}
+\caption{RMSE for various treatment effects; Treatment Assignment with $cov(T, X_1) = -0.75$} 
+\label{tab:f3}
+\end{table}
 
 
 \section{Misspecified Propensity Score Estimates}
@@ -156,22 +184,22 @@ MM Pairs & 0.235 & 0.225 & 0.326 & 0.291 \\
 
 \end{knitrout}
 % latex table generated in R 3.2.0 by xtable 1.8-0 package
-% Fri Feb  5 17:04:59 2016
+% Sat Feb  6 12:16:38 2016
 \begin{table}[ht]
 \centering
 \begin{tabular}{rrrrr}
   \hline
  & 0.01 & 0.1 & 1 & 10 \\ 
   \hline
-MM Pairs & 0.272 & 0.215 & 0.301 & 0.278 \\ 
-  MM Strata & 0.230 & 0.174 & 0.128 & 0.220 \\ 
-  Pscore Pairs & 1.829 & 1.139 & 2.080 & 2.091 \\ 
-  Pscore Strata & 0.613 & 0.647 & 0.876 & 0.785 \\ 
-  Ebal & 0.248 & 0.177 & 0.164 & 0.206 \\ 
-  Unadjusted & 1.194 & 1.553 & 1.462 & 2.086 \\ 
+MM Pairs & 0.277 & 0.273 & 0.288 & 0.279 \\ 
+  MM Strata & 0.215 & 0.214 & 0.221 & 0.214 \\ 
+  Pscore Pairs & 1.912 & 1.893 & 2.035 & 1.909 \\ 
+  Pscore Strata & 0.825 & 0.804 & 0.810 & 0.788 \\ 
+  Ebal & 0.213 & 0.214 & 0.223 & 0.213 \\ 
+  Unadjusted & 1.748 & 1.704 & 1.740 & 1.751 \\ 
    \hline
 \end{tabular}
-\caption{RMSE for various treatment effects} 
+\caption{RMSE for various treatment effects; Treatment Assignment with $cov(T, X_1) = 0.5$; Misspecified Propensity Score Model} 
 \label{tab:f4}
 \end{table}
 
@@ -188,22 +216,22 @@ MM Pairs & 0.272 & 0.215 & 0.301 & 0.278 \\
 
 \end{knitrout}
 % latex table generated in R 3.2.0 by xtable 1.8-0 package
-% Fri Feb  5 17:05:02 2016
+% Sat Feb  6 12:19:30 2016
 \begin{table}[ht]
 \centering
 \begin{tabular}{rrrrr}
   \hline
  & 0.01 & 0.1 & 1 & 10 \\ 
   \hline
-MM Pairs & 0.360 & 0.471 & 0.514 & 0.226 \\ 
-  MM Strata & 0.327 & 0.392 & 0.347 & 0.238 \\ 
-  Pscore Pairs & 1.034 & 0.804 & 1.255 & 0.835 \\ 
-  Pscore Strata & 0.545 & 0.684 & 0.666 & 0.403 \\ 
-  Ebal & 0.308 & 0.382 & 0.359 & 0.190 \\ 
-  Unadjusted & 1.384 & 1.913 & 1.117 & 0.871 \\ 
+MM Pairs & 0.330 & 0.343 & 0.325 & 0.330 \\ 
+  MM Strata & 0.261 & 0.261 & 0.252 & 0.263 \\ 
+  Pscore Pairs & 1.115 & 1.049 & 1.068 & 1.084 \\ 
+  Pscore Strata & 0.554 & 0.545 & 0.510 & 0.542 \\ 
+  Ebal & 0.262 & 0.262 & 0.251 & 0.265 \\ 
+  Unadjusted & 1.678 & 1.630 & 1.708 & 1.635 \\ 
    \hline
 \end{tabular}
-\caption{RMSE for various treatment effects} 
+\caption{RMSE for various treatment effects; Random Treatment Assignment; Heteroskedastic Errors} 
 \label{tab:f5}
 \end{table}
 
@@ -219,22 +247,22 @@ MM Pairs & 0.360 & 0.471 & 0.514 & 0.226 \\
 
 \end{knitrout}
 % latex table generated in R 3.2.0 by xtable 1.8-0 package
-% Fri Feb  5 17:05:04 2016
+% Sat Feb  6 12:22:25 2016
 \begin{table}[ht]
 \centering
 \begin{tabular}{rrrrr}
   \hline
  & 0.01 & 0.1 & 1 & 10 \\ 
   \hline
-MM Pairs & 0.320 & 0.406 & 0.252 & 0.352 \\ 
-  MM Strata & 0.250 & 0.356 & 0.210 & 0.256 \\ 
-  Pscore Pairs & 1.558 & 1.854 & 1.794 & 1.678 \\ 
-  Pscore Strata & 0.431 & 0.796 & 0.581 & 1.150 \\ 
-  Ebal & 0.229 & 0.351 & 0.199 & 0.317 \\ 
-  Unadjusted & 2.497 & 2.328 & 1.703 & 2.152 \\ 
+MM Pairs & 0.366 & 0.364 & 0.364 & 0.373 \\ 
+  MM Strata & 0.304 & 0.294 & 0.301 & 0.297 \\ 
+  Pscore Pairs & 1.732 & 1.610 & 1.741 & 1.742 \\ 
+  Pscore Strata & 0.689 & 0.680 & 0.733 & 0.715 \\ 
+  Ebal & 0.318 & 0.313 & 0.319 & 0.310 \\ 
+  Unadjusted & 2.167 & 2.140 & 2.229 & 2.207 \\ 
    \hline
 \end{tabular}
-\caption{RMSE for various treatment effects} 
+\caption{RMSE for various treatment effects; Treatment Assignment with $cov(T, X_1) = 0.5$; Heteroskedastic Errors} 
 \label{tab:f8}
 \end{table}
 
@@ -251,22 +279,22 @@ MM Pairs & 0.320 & 0.406 & 0.252 & 0.352 \\
 
 \end{knitrout}
 % latex table generated in R 3.2.0 by xtable 1.8-0 package
-% Fri Feb  5 17:05:07 2016
+% Sat Feb  6 12:25:17 2016
 \begin{table}[ht]
 \centering
 \begin{tabular}{rrrrr}
   \hline
  & 0.01 & 0.1 & 1 & 10 \\ 
   \hline
-MM Pairs & 0.219 & 0.325 & 0.308 & 0.269 \\ 
-  MM Strata & 0.350 & 0.177 & 0.325 & 0.287 \\ 
-  Pscore Pairs & 0.830 & 0.971 & 1.158 & 0.737 \\ 
-  Pscore Strata & 0.402 & 0.464 & 0.728 & 0.510 \\ 
-  Ebal & 0.346 & 0.177 & 0.293 & 0.288 \\ 
-  Unadjusted & 1.118 & 1.742 & 1.558 & 1.420 \\ 
+MM Pairs & 0.363 & 0.376 & 0.388 & 0.382 \\ 
+  MM Strata & 0.285 & 0.293 & 0.304 & 0.301 \\ 
+  Pscore Pairs & 1.109 & 1.076 & 1.126 & 1.073 \\ 
+  Pscore Strata & 0.586 & 0.569 & 0.567 & 0.581 \\ 
+  Ebal & 0.286 & 0.292 & 0.304 & 0.297 \\ 
+  Unadjusted & 1.737 & 1.665 & 1.673 & 1.685 \\ 
    \hline
 \end{tabular}
-\caption{RMSE for various treatment effects} 
+\caption{RMSE for various treatment effects; Random Treatment Assignment; Laplacian Errors} 
 \label{tab:f6}
 \end{table}
 
@@ -281,23 +309,24 @@ MM Pairs & 0.219 & 0.325 & 0.308 & 0.269 \\
 
 
 \end{knitrout}
+
 % latex table generated in R 3.2.0 by xtable 1.8-0 package
-% Fri Feb  5 17:05:10 2016
+% Sat Feb  6 17:58:38 2016
 \begin{table}[ht]
 \centering
 \begin{tabular}{rrrrr}
   \hline
  & 0.01 & 0.1 & 1 & 10 \\ 
   \hline
-MM Pairs & 0.409 & 0.508 & 0.315 & 0.307 \\ 
-  MM Strata & 0.269 & 0.445 & 0.378 & 0.403 \\ 
-  Pscore Pairs & 1.595 & 1.785 & 2.158 & 1.955 \\ 
-  Pscore Strata & 0.536 & 0.780 & 0.773 & 0.815 \\ 
-  Ebal & 0.285 & 0.462 & 0.353 & 0.448 \\ 
-  Unadjusted & 1.467 & 1.488 & 1.781 & 1.889 \\ 
+MM Pairs & 0.409 & 0.402 & 0.412 & 0.401 \\ 
+  MM Strata & 0.343 & 0.329 & 0.337 & 0.328 \\ 
+  Pscore Pairs & 1.677 & 1.736 & 1.723 & 1.718 \\ 
+  Pscore Strata & 0.706 & 0.756 & 0.728 & 0.771 \\ 
+  Ebal & 0.357 & 0.336 & 0.356 & 0.344 \\ 
+  Unadjusted & 2.164 & 2.192 & 2.266 & 2.225 \\ 
    \hline
 \end{tabular}
-\caption{RMSE for various treatment effects} 
+\caption{RMSE for various treatment effects; Treatment Assignment with $cov(T, X_1) = 0.5$; Laplacian Errors} 
 \label{tab:f7}
 \end{table}
 

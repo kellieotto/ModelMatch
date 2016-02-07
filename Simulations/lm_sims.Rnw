@@ -19,14 +19,14 @@ library(xtable)
 library(ModelMatch)
 library(ggplot2)
 source("simulation_tools.R")
-opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, results = 'hide')
+opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, results = 'hide', cache=TRUE)
 @
 
 Set simulation parameters
 <<setparameters, echo=TRUE>>=
 set.seed(321)
 gamma <- c(0.01, 0.1, 1, 10)
-B <- 10
+B <- 1000
 N <- 100
 @
 
@@ -44,7 +44,7 @@ tab <- sapply(gamma, function(g){
 colnames(tab) <- gamma
 print(xtable(tab, digits = 3,
       label = "tab:f1",
-      caption = "RMSE for various treatment effects"),
+      caption = "RMSE for various treatment effects; Random Treatment Assignment"),
       include.rownames = TRUE,
       include.colnames = TRUE)
 @
@@ -62,19 +62,19 @@ tab2 <- sapply(gamma, function(g){
 colnames(tab2) <- gamma
 print(xtable(tab2, digits = 3,
       label = "tab:f2",
-      caption = "RMSE for various treatment effects"),
+      caption = "RMSE for various treatment effects; Treatment Assignment with $cov(T, X_1) = 0.5$"),
       include.rownames = TRUE,
       include.colnames = TRUE)
 @
 
 
 % Why doesn't this one work?
-<<f3, eval=FALSE, fig.align="center", fig.width=8, fig.height=8>>=
+<<f3, eval=TRUE, fig.align="center", fig.width=8, fig.height=8>>=
 res3 <- simulate_estimation(gamma, B = B, N = N, "correlated", alpha = -0.75)
 plot_est_by_gamma(res3) +
   ggtitle("Estimates of Varying Levels of Constant Additive Treatment Effects\n Treatment Assignment with Cov(T, X1) = -0.75")
 @
-<<t3, results="asis", eval=FALSE>>=
+<<t3, results="asis", eval=TRUE>>=
 tab3 <- sapply(gamma, function(g){
   gamma_subset <- res3[res3$Gamma == g, -7]
   apply(gamma_subset, 2, compute_rmse, g)
@@ -82,7 +82,7 @@ tab3 <- sapply(gamma, function(g){
 colnames(tab3) <- gamma
 print(xtable(tab3, digits = 3,
       label = "tab:f3",
-      caption = "RMSE for various treatment effects"),
+      caption = "RMSE for various treatment effects; Treatment Assignment with $cov(T, X_1) = -0.75$"),
       include.rownames = TRUE,
       include.colnames = TRUE)
 @
@@ -101,7 +101,7 @@ tab4 <- sapply(gamma, function(g){
 colnames(tab4) <- gamma
 print(xtable(tab4, digits = 3,
       label = "tab:f4",
-      caption = "RMSE for various treatment effects"),
+      caption = "RMSE for various treatment effects; Treatment Assignment with $cov(T, X_1) = 0.5$; Misspecified Propensity Score Model"),
       include.rownames = TRUE,
       include.colnames = TRUE)
 @
@@ -120,7 +120,7 @@ tab5 <- sapply(gamma, function(g){
 colnames(tab5) <- gamma
 print(xtable(tab5, digits = 3,
       label = "tab:f5",
-      caption = "RMSE for various treatment effects"),
+      caption = "RMSE for various treatment effects; Random Treatment Assignment; Heteroskedastic Errors"),
       include.rownames = TRUE,
       include.colnames = TRUE)
 @
@@ -138,7 +138,7 @@ tab8 <- sapply(gamma, function(g){
 colnames(tab8) <- gamma
 print(xtable(tab8, digits = 3,
       label = "tab:f8",
-      caption = "RMSE for various treatment effects"),
+      caption = "RMSE for various treatment effects; Treatment Assignment with $cov(T, X_1) = 0.5$; Heteroskedastic Errors"),
       include.rownames = TRUE,
       include.colnames = TRUE)
 @
@@ -157,7 +157,7 @@ tab6 <- sapply(gamma, function(g){
 colnames(tab6) <- gamma
 print(xtable(tab6, digits = 3,
       label = "tab:f6",
-      caption = "RMSE for various treatment effects"),
+      caption = "RMSE for various treatment effects; Random Treatment Assignment; Laplacian Errors"),
       include.rownames = TRUE,
       include.colnames = TRUE)
 @
@@ -167,15 +167,17 @@ res7 <- simulate_estimation(gamma, B = B, N = N, selection="correlated", errors=
 plot_est_by_gamma(res7) +
   ggtitle("Estimates of Varying Levels of Constant Additive Treatment Effects\n Treatment Assignment with Cov(T, X1) = 0.5\n Laplacian Errors")
 @
+
 <<t7, results="asis">>=
 tab7 <- sapply(gamma, function(g){
   gamma_subset <- res7[res7$Gamma == g, -7]
   apply(gamma_subset, 2, compute_rmse, g)
 })
+
 colnames(tab7) <- gamma
 print(xtable(tab7, digits = 3,
       label = "tab:f7",
-      caption = "RMSE for various treatment effects"),
+      caption = "RMSE for various treatment effects; Treatment Assignment with $cov(T, X_1) = 0.5$; Laplacian Errors"),
       include.rownames = TRUE,
       include.colnames = TRUE)
 @
