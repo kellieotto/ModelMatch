@@ -50,10 +50,10 @@ Strata <- function(treatment, prediction, strata = 5){
 #' @param groups List output from Matches, containing matched pairs or groups
 #' @return a list of the same structure as the input, with treatment assignments permuted.
 permute_within_groups <- function(groups){
-  permuted <- groups
-  for(g in 1:length(groups)){
-    permuted[[g]][,"treatment"] <- sample(groups[[g]][,"treatment"])
-  }
+  permuted <- sapply(1:length(groups), function(g){
+    tmp <- groups[[g]]
+    tmp[,"treatment"] <- sample(tmp[,"treatment"])
+  })
   return(permuted)
 }
 
