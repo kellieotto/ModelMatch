@@ -64,14 +64,14 @@ permute_within_groups <- function(groups){
 #' Compute difference in mean residual between treated and control within each group
 #' @inheritParams permu_test_mean
 #' @return a vector of differences
-within_group_mean <- function(groups, prediction, response, shift = 0){
+within_group_mean <- function(strata, prediction, response, shift = 0){
   ### Compute difference in mean residual between treated and control within each group
-  ### Input: groups     = list from Matches (or from stratification function)
+  ### Input: strata     = list from Matches (or from stratification function)
   ###        prediction = vector of predictions from the model
   ###        response   = vector of observed responses for each individual
   ###        shift      = null shift (constant scalar) for treatment group (default 0)
   resid <- prediction-response
-  sapply(groups, function(g){
+  sapply(strata, function(g){
     treated <- g[g[,"treatment"]==1,"index"]
     ctrl    <- g[g[,"treatment"]==0,"index"]
     return(-1*(mean(resid[treated] - shift) - mean(resid[ctrl])))
