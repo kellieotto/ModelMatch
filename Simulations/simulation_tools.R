@@ -21,6 +21,11 @@ compute_rmse <- function(x, truth){
   sqrt(mean((x-truth)^2, na.rm=TRUE))
 }
 
+compute_power <- function(pvalues){
+  sapply((0:99)/100, function(p) mean(pvalues <= p, na.rm = TRUE))
+}
+
+
 ### Main simulation functions
 
 simulate_estimation <- function(gamma, B, N, selection = "random", nu = 0.5, errors = "normal"){
@@ -128,12 +133,11 @@ simulate_estimation <- function(gamma, B, N, selection = "random", nu = 0.5, err
 
 
 
-simulate_tests <- function(gamma, B, N, alpha = 0.05, selection = "random", nu = 0.5, errors = "normal"){
+simulate_tests <- function(gamma, B, N, selection = "random", nu = 0.5, errors = "normal"){
   # Run simulations
   # gamma     = the (constant additive) treatment effect
   # N         = number of individuals in the sample
   # B         = number of replications
-  # alpha     = significance level of tests. Default is 0.05.
   # selection = treatment assignment mechanism. Default is "random".
   #             Options: "random", "correlated", "misspecified pscore"
   # nu        = covariance between treatment and X1 if selection == "correlated" or "misspecified pscore". Default 0.5
@@ -205,12 +209,12 @@ simulate_tests <- function(gamma, B, N, alpha = 0.05, selection = "random", nu =
       mm_strata <- Strata(treatment = tr, prediction = Yhat, strata = 5)
 
       # Tests
-      match_test <- permu_test_mean(groups = mm_matches, prediction = Yhat, treatment = tr,
+      match_test <- permu_test_mean(strata = mm_matches, prediction = Yhat, treatment = tr,
                                     response = Y)
-      strata_test <- permu_test_mean(groups = mm_strata, prediction = Yhat, treatment = tr,
+      strata_test <- permu_test_mean(strata = mm_strata, prediction = Yhat, treatment = tr,
                                     response = Y)
       nomatches <- list(data.frame("index" = 1:N, "treatment" = tr))
-      uncontrolled_test <- permu_test_mean(groups = nomatches, prediction = 0, treatment = tr, response = Y)
+      uncontrolled_test <- permu_test_mean(strata = nomatches, prediction = 0, treatment = tr, response = Y)
 
       # Estimates
       pvalue[rownum, "MM Pairs"] <- match_test$pvalue["twosided"]
@@ -235,3 +239,24 @@ plot_est_by_gamma <- function(estimates){
     xlab("Estimation Method") +
     ylab("Estimate")
 }
+
+plot_power_curves <- function(pvalues){
+  # Input ``pvalues'' should be the output of simulate_tests
+  gamma <- unique(pvalues[,"Gamma"])
+  power_curves <- lapply(gamma, function(g){
+    gamma_subset <- pvalues[pvalues$Gamma == g, -5]
+    apply(gamma_subset, 2, compute_power)
+  })
+  power_curves <- do.call(rbind, power_curves)
+  power_curves <- as.data.frame(cbind(power_curves,
+                                      "alpha" = rep((0:99)/100, length(gamma)),
+                                      "gamma" = rep(gamma, each = 100)
+                                      ))
+  power_curves_plot <- melt(power_curves, id.vars = c("alpha", "gamma"),
+                            variable.name = "Method")
+  ggplot(power_curves_plot, aes(x = alpha, y = value)) +
+    geom_line(aes(color = Method)) +
+    facet_wrap(~gamma) +
+    xlab("Significance level") +
+    ylab("Power")
+  }
