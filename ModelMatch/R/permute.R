@@ -84,18 +84,18 @@ within_group_mean <- function(strata, prediction, response, shift = 0){
 #' Test for the difference in means within groups
 #'
 #' Carry out stratified permutation test for difference in mean residuals between the treatment and control groups.
-#' @param groups List output from Matches, containing matched pairs or groups
+#' @param strata List output from Matches, containing matched pairs or groups
 #' @param prediction Vector of predicted outcomes
 #' @param response Vector of responses
 #' @param treatment Vector of treatments
 #' @param iters The number of Monte Carlo iterations (default 1000)
 #' @param shift Null shift (a scalar constant) for the treatment group (default 0)
 #' @return a list containing the results: attributes diff_means (the estimated difference), perm_distribution (simulated permutation distribution), and pvalue (p-value for the test)
-permu_test_mean <- function(groups, prediction, treatment, response, iters=1000, shift = 0){
-  GG <- length(groups)
-  truth <- sum(within_group_mean(groups, prediction, response))/GG
+permu_test_mean <- function(strata, prediction, treatment, response, iters=1000, shift = 0){
+  GG <- length(strata)
+  truth <- sum(within_group_mean(strata, prediction, response))/GG
   response_shift <- response - shift*treatment
-  perm_dist <- replicate(iters, {perm_groups <- permute_within_groups(groups)
+  perm_dist <- replicate(iters, {perm_groups <- permute_within_groups(strata)
                                  sum(within_group_mean(perm_groups, prediction, response_shift, shift = shift))/GG})
   pval <- c("p_upper" = sum(perm_dist >= truth)/iters,
             "p_lower" = sum(perm_dist <= truth)/iters)
