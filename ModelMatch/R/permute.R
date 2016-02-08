@@ -72,8 +72,9 @@ within_group_mean <- function(strata, prediction, response, shift = 0){
   ###        shift      = null shift (constant scalar) for treatment group (default 0)
   resid <- prediction-response
   sapply(strata, function(g){
-    treated <- g[g[,"treatment"]==1,"index"]
-    ctrl    <- g[g[,"treatment"]==0,"index"]
+    tt <- (g$treatment == 1)
+    treated <- g$index[tt == 1]
+    ctrl <- g$index[tt == 0]
     return(-1*(mean(resid[treated] - shift) - mean(resid[ctrl])))
   })
 }
