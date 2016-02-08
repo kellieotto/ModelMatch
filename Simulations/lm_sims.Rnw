@@ -182,4 +182,48 @@ print(xtable(tab7, digits = 3,
       include.colnames = TRUE)
 @
 
+
+\section{Hypothesis Testing}
+We compare the power of stratified permutation tests using model-based matching with pairs and with strata to the t-test from OLS and an unstratified permutation test.
+
+<<setup_tst>>=
+Btst <- 1000
+gammatst <- c(0.5, 1)
+Ntst <- 50
+set.seed(456)
+@
+
+<<compare_tests1, fig.align="center", fig.width=8, fig.height=6>>=
+tst1 <- simulate_tests(gammatst, Btst, Ntst)
+plot_power_curves(tst1) +
+  ggtitle("Power Curves for Varying Magnitude of Treatment Effects\n Random Treatment Assignment")
+@
+
+<<compare_tests2, fig.align="center", fig.width=8, fig.height=6>>=
+tst2 <- simulate_tests(gammatst, Btst, Ntst, selection = "correlated")
+plot_power_curves(tst2) +
+  ggtitle("Power Curves for Varying Magnitude of Treatment Effects\n Treatment Assignment with Cov(T, X1) = 0.5")
+@
+
+<<compare_tests3, fig.align="center", fig.width=8, fig.height=6>>=
+tst3 <- simulate_tests(gammatst, Btst, Ntst, selection = "correlated", nu = 1)
+plot_power_curves(tst3) +
+  ggtitle("Power Curves for Varying Magnitude of Treatment Effects\n Treatment Assignment with Cov(T, X1) = 1")
+@
+
+<<compare_tests4, fig.align="center", fig.width=8, fig.height=6>>=
+tst4 <- simulate_tests(gammatst, Btst, Ntst, errors = "heteroskedastic")
+plot_power_curves(tst4) +
+  ggtitle("Power Curves for Varying Magnitude of Treatment Effects\n Random Treatment Assignment\n Heteroskedastic Errors")
+
+@
+
+<<compare_tests5, fig.align="center", fig.width=8, fig.height=6>>=
+tst5 <- simulate_tests(gammatst, Btst, Ntst, errors = "heavy")
+plot_power_curves(tst5) +
+  ggtitle("Power Curves for Varying Magnitude of Treatment Effects\n Random Treatment Assignment\n Laplacian Errors")
+@
+
+
+
 \end{document}
