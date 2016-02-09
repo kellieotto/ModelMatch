@@ -1,1 +1,1 @@
-exportPattern("^[^\\.]")
+useDynLib(ModelMatch)exportPattern("^[[:alpha:]]+")importFrom(Rcpp, evalCpp)

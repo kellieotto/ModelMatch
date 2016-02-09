@@ -1,5 +1,5 @@
-library(Rcpp)
-sourceCpp("R/permute.cpp")
+#library(Rcpp)
+#sourceCpp("R/permute.cpp")
 ###################################################### Modeling and matching ######################################################
 
 #' Match on model predictions.
