@@ -1,6 +1,6 @@
 context("Permutation test helper functions")
 
-test_that("Rcpp and slow versions of within_group_mean match"{
+test_that("Rcpp and slow versions of within_group_mean match", {
   matches <- list(data.frame("index"=c(1,2), "score"=c(3,4), "treatment"=c(1,0)), data.frame("index"=c(3,4), "score"=c(3,4), "treatment"=c(1,0)))
   Yhat <- rep(1,4)
   Y <- c(2,1,2,1)
@@ -9,7 +9,7 @@ test_that("Rcpp and slow versions of within_group_mean match"{
   expect_equal(res1, res2)
 })
 
-test_that("permute within groups"{
+test_that("permute within groups", {
   matches <- list(data.frame("index"=c(1,2), "score"=c(3,4), "treatment"=c(1,0)), data.frame("index"=c(3,4), "score"=c(3,4), "treatment"=c(1,0)))
   Yhat <- rep(1,4)
   Y <- c(2,1,2,1)
@@ -21,5 +21,5 @@ test_that("permute within groups"{
   set.seed(1)
   matches2 <- permute_within_groups_cpp(matches)
   perm <- sapply(matches2, function(x) x[,"treatment"])
-  expect_equal(perm, matrix(c(0, 1, 0, 1), nrow = 2))
+  expect_equal(perm, matrix(c(1, 0, 1, 0), nrow = 2))
 })
