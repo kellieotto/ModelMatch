@@ -4,10 +4,10 @@
 \alias{within_group_mean}
 \title{Difference in means within groups}
 \usage{
-within_group_mean(groups, prediction, response, shift = 0)
+within_group_mean(strata, prediction, response, shift = 0)
 }
 \arguments{
-\item{groups}{List output from Matches, containing matched pairs or groups}
+\item{strata}{List output from Matches, containing matched pairs or groups}
 
 \item{prediction}{Vector of predicted outcomes}
 

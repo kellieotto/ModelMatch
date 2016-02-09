@@ -8,8 +8,6 @@ permu_CI_mean(groups, prediction, response, treatment, side = "both",
   alpha = 0.05, iters = 1000)
 }
 \arguments{
-\item{groups}{List output from Matches, containing matched pairs or groups}
-
 \item{prediction}{Vector of predicted outcomes}
 
 \item{response}{Vector of responses}

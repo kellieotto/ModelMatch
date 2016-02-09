@@ -4,10 +4,10 @@
 \alias{permute_within_groups}
 \title{Permute within groups}
 \usage{
-permute_within_groups(groups)
+permute_within_groups(strata)
 }
 \arguments{
-\item{groups}{List output from Matches, containing matched pairs or groups}
+\item{strata}{List output from Matches, containing matched pairs or groups}
 }
 \value{
 a list of the same structure as the input, with treatment assignments permuted.
