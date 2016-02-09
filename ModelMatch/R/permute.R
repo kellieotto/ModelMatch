@@ -1,3 +1,5 @@
+library(Rcpp)
+sourceCpp(permute.cpp)
 ###################################################### Modeling and matching ######################################################
 
 #' Match on model predictions.
@@ -47,13 +49,13 @@ Strata <- function(treatment, prediction, strata = 5){
 #' Permute within groups
 #'
 #' Permute treatment assignment within groups of matched individuals
-#' @param groups List output from Matches, containing matched pairs or groups
+#' @param strata List output from Matches, containing matched pairs or groups
 #' @return a list of the same structure as the input, with treatment assignments permuted.
-permute_within_groups <- function(groups){
-  permuted <- sapply(1:length(groups), function(g){
-    tmp <- groups[[g]]
-    tmp[,"treatment"] <- sample(tmp[,"treatment"])
-  })
+permute_within_groups <- function(strata){
+  permuted <- strata
+  for(g in 1:length(strata)){
+    permuted[[g]][,"treatment"] <- sample(strata[[g]][,"treatment"])
+  }
   return(permuted)
 }
 
@@ -65,11 +67,6 @@ permute_within_groups <- function(groups){
 #' @inheritParams permu_test_mean
 #' @return a vector of differences
 within_group_mean <- function(strata, prediction, response, shift = 0){
-  ### Compute difference in mean residual between treated and control within each group
-  ### Input: strata     = list from Matches (or from stratification function)
-  ###        prediction = vector of predictions from the model
-  ###        response   = vector of observed responses for each individual
-  ###        shift      = null shift (constant scalar) for treatment group (default 0)
   resid <- prediction-response
   sapply(strata, function(g){
     tt <- (g$treatment == 1)
