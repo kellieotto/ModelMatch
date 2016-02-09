@@ -56,10 +56,10 @@ NumericVector within_group_mean_cpp(List strata, NumericVector prediction, Numer
     float nc = 0;
     for(int nn = 0; nn < ng; nn++){
       if (treat_ind(nn) == 1){
-        tt = tt + resid[index(nn)];
+        tt = tt + resid[index(nn)-1];
         nt = nt+1;
       } else {
-        cc = cc + resid[index(nn)];
+        cc = cc + resid[index(nn)-1];
         nc = nc+1;
       }
     }
