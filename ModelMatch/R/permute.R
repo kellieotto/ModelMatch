@@ -91,10 +91,10 @@ within_group_mean <- function(strata, prediction, response, shift = 0){
 #' @return a list containing the results: attributes diff_means (the estimated difference), perm_distribution (simulated permutation distribution), and pvalue (p-value for the test)
 permu_test_mean_slow <- function(strata, prediction, treatment, response, iters=1000, shift = 0){
   GG <- length(strata)
-  truth <- sum(within_group_mean(strata, prediction, response))/GG
+  truth <- sum(abs(within_group_mean(strata, prediction, response)))/GG
   response_shift <- response - shift*treatment
   perm_dist <- replicate(iters, {perm_groups <- permute_within_groups(strata)
-                                 sum(within_group_mean(perm_groups, prediction, response_shift, shift = shift))/GG})
+                                 sum(abs(within_group_mean(perm_groups, prediction, response_shift, shift = shift)))/GG})
   pval <- c("p_upper" = sum(perm_dist >= truth)/iters,
             "p_lower" = sum(perm_dist <= truth)/iters)
   pval <- c(pval, "twosided" = min(1, 2*min(pval)))
@@ -114,11 +114,11 @@ permu_test_mean_slow <- function(strata, prediction, treatment, response, iters=
 #' @return a list containing the results: attributes diff_means (the estimated difference), perm_distribution (simulated permutation distribution), and pvalue (p-value for the test)
 permu_test_mean <- function(strata, prediction, treatment, response, iters=1000, shift = 0){
   GG <- length(strata)
-  truth <- sum(within_group_mean_cpp(strata, prediction, response))/GG
+  truth <- sum(abs(within_group_mean_cpp(strata, prediction, response)))/GG
   response_shift <- response - shift*treatment
   perm_dist <- replicate(iters, {
     perm_groups <- permute_within_groups_cpp(strata)
-    sum(within_group_mean_cpp(perm_groups, prediction, response_shift, shift = shift))
+    sum(abs(within_group_mean_cpp(perm_groups, prediction, response_shift, shift = shift)))
     })/GG
   pval <- c("p_upper" = sum(perm_dist >= truth)/iters,
             "p_lower" = sum(perm_dist <= truth)/iters)
