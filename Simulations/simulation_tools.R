@@ -4,6 +4,8 @@ library(dplyr)
 library(ggplot2)
 library(reshape2)
 library(VGAM)
+library(grid)
+library(gridExtra)
 
 ### Helper functions to compute things
 
@@ -28,7 +30,7 @@ compute_power <- function(pvalues){
 
 ### Main simulation functions
 
-simulate_estimation <- function(gamma, B, N, selection = "random", nu = 0.5, errors = "normal"){
+simulate_estimation <- function(gamma, B, N, selection = "random", nu = 0.5, errors = "normal", beta = c(1,2,4)){
   # Run simulations
   # gamma     = the (constant additive) treatment effect
   # N         = number of individuals in the sample
@@ -38,10 +40,11 @@ simulate_estimation <- function(gamma, B, N, selection = "random", nu = 0.5, err
   # nu        = covariance between treatment and X1 if selection == "correlated" or "misspecified pscore". Default 0.5
   # errors    = type of errors in the response model. Default is "normal".
   #             Options: "normal" (N(0,1)), "heteroskedastic" (N(0, abs(X2))), "heavy" (Laplacian(0,1))
+  # beta      = vector of linear data-generating process coefficients. Defaults 1, 2, 4
 
-  beta0 <- 1
-  beta1 <- 2
-  beta2 <- 4
+  beta0 <- beta[1]
+  beta1 <- beta[2]
+  beta2 <- beta[3]
   # Set storage - things to report
   # Compare model-based matching, propensity score matching, t-test, and max entropy balancing
 
@@ -132,6 +135,103 @@ simulate_estimation <- function(gamma, B, N, selection = "random", nu = 0.5, err
 }
 
 
+simulate_estimation_vary_mm <- function(gamma, B, N, selection = "random", nu = 0.5, errors = "normal", beta = c(1,2,4)){
+  # Run simulations
+  # gamma     = the (constant additive) treatment effect
+  # N         = number of individuals in the sample
+  # B         = number of replications
+  # selection = treatment assignment mechanism. Default is "random".
+  #             Options: "random", "correlated", "misspecified pscore"
+  # nu        = covariance between treatment and X1 if selection == "correlated" or "misspecified pscore". Default 0.5
+  # errors    = type of errors in the response model. Default is "normal".
+  #             Options: "normal" (N(0,1)), "heteroskedastic" (N(0, abs(X2))), "heavy" (Laplacian(0,1))
+  # beta      = vector of linear data-generating process coefficients. Defaults 1, 2, 4
+
+  beta0 <- beta[1]
+  beta1 <- beta[2]
+  beta2 <- beta[3]
+  # Set storage - things to report
+  # Compare model-based matching, propensity score matching, t-test, and max entropy balancing
+
+  # estimate: mean(treated) - mean(control)
+  estimate <- matrix(NA, nrow = B*length(gamma), ncol = 6)
+  colnames(estimate) <- c("MM Pairs", "MM Strata", "MM Unstratified", "MM Pairs (ctrls)", "MM Strata (ctrls)", "MM Unstratified (ctrls)")
+  estimate <- cbind(estimate, "Gamma" = rep(gamma, each = B))
+  rownum <- 0
+
+  for(g in gamma){
+    print(paste("Gamma = ", g))
+    for(b in 1:B){
+      print(rownum)
+      rownum <- rownum + 1
+
+      # Generate Xs and epsilon
+      X1 <- rnorm(N); X2 <- rnorm(N, sd = 2)
+
+      if(errors == "normal"){
+        epsilon <- rnorm(N)
+      }else{
+        if(errors == "heteroskedastic"){
+          epsilon <- rnorm(N, sd = sqrt(abs(X2)))
+        }else{
+          if(errors == "heavy"){
+            epsilon <- rlaplace(N)
+          }else{
+            stop("Invalid errors input")
+          }
+        }
+      }
+      # Treatment
+      if(selection == "random"){
+        tr <- 1*(rnorm(N) >= 0)
+      }else{
+        if(selection == "correlated"){
+          # T = nu*X_1 + delta, so cov(T, X_1) = nu*var(X_1)
+          tr <- 1*((nu*X1 + rnorm(N)) >= 0)
+        }else{
+          if(selection == "misspecified pscore"){
+            # T = nu*X_1 + X_1*X_2 + delta, so cov(T, X_1) = nu*var(X_1) still
+            tr <- 1*((nu*X1 + X1*X2 + rnorm(N)) >= 0)
+          }else{
+            stop("Invalid selection input")
+          }
+        }
+      }
+
+      # Generate Y
+      Y <- beta0 + beta1*X1 + beta2*X2 + g*tr + epsilon
+      dat <- data.frame(Y, X1, X2, tr)
+
+      # Estimate Yhat using controls
+      mm_model_ctrls <- lm(Y~X1+X2, dat, subset = (tr==0))
+      Yhat_ctrls <- predict(mm_model_ctrls, dat)
+
+      # Estimate Yhat using all observations
+      mm_model_all <- lm(Y~X1+X2, dat)
+      Yhat_all <- predict(mm_model_all, dat)
+
+      # Create matches/strata for estimation
+      mm_matches_ctrls <- Matches(treatment = tr, prediction = Yhat_ctrls)
+      mm_matches_all <- Matches(treatment = tr, prediction = Yhat_all)
+      mm_strata_ctrls <- Strata(treatment = tr, prediction = Yhat_ctrls, strata = 5)
+      mm_strata_all <- Strata(treatment = tr, prediction = Yhat_all, strata = 5)
+      mm_unstr_ctrls <- Strata(treatment = tr, prediction = Yhat_ctrls, strata = 1)
+      mm_unstr_all <- Strata(treatment = tr, prediction = Yhat_all, strata = 1)
+
+      # Estimates
+      estimate[rownum, "MM Pairs"] <- compute_diffmeans(mm_matches_all, Y-Yhat_all)
+      estimate[rownum, "MM Strata"] <- compute_diffmeans(mm_strata_all, Y-Yhat_all)
+
+      estimate[rownum, "MM Pairs (ctrls)"] <- compute_diffmeans(mm_matches_ctrls, Y-Yhat_ctrls)
+      estimate[rownum, "MM Strata (ctrls)"] <- compute_diffmeans(mm_strata_ctrls, Y-Yhat_ctrls)
+
+      estimate[rownum, "MM Unstratified"] <- compute_diffmeans(mm_unstr_all, Y-Yhat_all)
+      estimate[rownum, "MM Unstratified (ctrls)"] <- compute_diffmeans(mm_unstr_ctrls, Y-Yhat_ctrls)
+    }
+  }
+  return(as.data.frame(estimate))
+}
+
 
 simulate_tests <- function(gamma, B, N, selection = "random", nu = 0.5, errors = "normal"){
   # Run simulations
@@ -152,7 +252,7 @@ simulate_tests <- function(gamma, B, N, selection = "random", nu = 0.5, errors =
 
   # power: number of times pvalue < 0.05
   pvalue <- matrix(NA, nrow = B*length(gamma), ncol = 4)
-  colnames(pvalue) <- c("MM Pairs", "MM Strata", "OLS", "Unadjusted")
+  colnames(pvalue) <- c("MM 2 Strata", "MM 5 Strata","MM 10 Strata", "OLS")
   pvalue <- cbind(pvalue, "Gamma" = rep(gamma, each = B))
   rownum <- 0
 
@@ -200,26 +300,32 @@ simulate_tests <- function(gamma, B, N, selection = "random", nu = 0.5, errors =
       dat <- data.frame(Y, X1, X2, tr)
 
       # Estimate Yhat using controls
-      mm_model <- lm(Y~X1+X2, dat, subset = (tr==0))
+#      mm_model_ctrls <- lm(Y~X1+X2, dat, subset = (tr==0))
+#      Yhat_ctrls <- predict(mm_model_ctrls, dat)
+      # Estimate Yhat on all data
+      mm_model <- lm(Y~X1+X2, dat)
       Yhat <- predict(mm_model, dat)
 
 
       # Create matches/strata for estimation
-      mm_matches <- Matches(treatment = tr, prediction = Yhat)
+      mm_many_strata <- Strata(treatment = tr, prediction = Yhat, strata = 10)
       mm_strata <- Strata(treatment = tr, prediction = Yhat, strata = 5)
+      mm_few_strata <- Strata(treatment = tr, prediction = Yhat, strata = 2)
 
       # Tests
-      match_test <- permu_test_mean(strata = mm_matches, prediction = Yhat, treatment = tr,
+      many_strata_test <- permu_test_mean(strata = mm_many_strata, prediction = Yhat, treatment = tr,
                                     response = Y)
       strata_test <- permu_test_mean(strata = mm_strata, prediction = Yhat, treatment = tr,
                                     response = Y)
-      nomatches <- list(data.frame("index" = 1:N, "treatment" = tr))
-      uncontrolled_test <- permu_test_mean(strata = nomatches, prediction = 0, treatment = tr, response = Y)
+#      nomatches <- list(data.frame("index" = 1:N, "score" = rep(NA, N), "treatment" = tr))
+#      uncontrolled_test <- permu_test_mean(strata = nomatches, prediction = rep(0, length(tr)), treatment = tr, response = Y)
+      few_strata_test <- permu_test_mean(strata = mm_few_strata, prediction = Yhat, treatment = tr,
+                                         response = Y)
 
       # Estimates
-      pvalue[rownum, "MM Pairs"] <- match_test$pvalue["twosided"]
-      pvalue[rownum, "MM Strata"] <- strata_test$pvalue["twosided"]
-      pvalue[rownum, "Unadjusted"] <- strata_test$pvalue["twosided"]
+      pvalue[rownum, "MM 2 Strata"] <- few_strata_test$pvalue["p_upper"]
+      pvalue[rownum, "MM 5 Strata"] <- strata_test$pvalue["p_upper"]
+      pvalue[rownum, "MM 10 Strata"] <- many_strata_test$pvalue["p_upper"]
       pvalue[rownum, "OLS"] <- summary(lm(Y~., dat))$coeff["tr", "Pr(>|t|)"]
     }
   }
@@ -260,3 +366,86 @@ plot_power_curves <- function(pvalues){
     xlab("Significance level") +
     ylab("Power")
   }
+
+
+plot_by_yhat_model <- function(gamma, N, selection = "random", nu = 0.5, errors = "normal"){
+    # Run simulations
+    # gamma     = the (constant additive) treatment effect
+    # N         = number of individuals in the sample
+    # B         = number of replications
+    # selection = treatment assignment mechanism. Default is "random".
+    #             Options: "random", "correlated", "misspecified pscore"
+    # nu        = covariance between treatment and X1 if selection == "correlated" or "misspecified pscore". Default 0.5
+    # errors    = type of errors in the response model. Default is "normal".
+    #             Options: "normal" (N(0,1)), "heteroskedastic" (N(0, abs(X2))), "heavy" (Laplacian(0,1))
+
+    beta0 <- 1
+    beta1 <- 2
+    beta2 <- 4
+    # Set storage - things to report
+    # Compare model-based matching, t-test after OLS, and randomization without controlling for covariates
+
+    # Generate Xs and epsilon
+    X1 <- rnorm(N); X2 <- rnorm(N, sd = 2)
+
+    if(errors == "normal"){
+      epsilon <- rnorm(N)
+    }else{
+      if(errors == "heteroskedastic"){
+        epsilon <- rnorm(N, sd = sqrt(abs(X2)))
+      }else{
+        if(errors == "heavy"){
+          epsilon <- rlaplace(N)
+        }else{
+          stop("Invalid errors input")
+        }
+      }
+    }
+    # Treatment
+    if(selection == "random"){
+      tr <- 1*(rnorm(N) >= 0)
+    }else{
+      if(selection == "correlated"){
+        # T = nu*X_1 + delta, so cov(T, X_1) = nu*var(X_1)
+        tr <- 1*((nu*X1 + rnorm(N)) >= 0)
+      }else{
+        if(selection == "misspecified pscore"){
+          # T = nu*X_1 + X_1*X_2 + delta, so cov(T, X_1) = nu*var(X_1) still
+          tr <- 1*((nu*X1 + X1*X2 + rnorm(N)) >= 0)
+        }else{
+          stop("Invalid selection input")
+        }
+      }
+    }
+
+    # Generate Y
+    Y <- beta0 + beta1*X1 + beta2*X2 + gamma*tr + epsilon
+    dat <- data.frame(Y, X1, X2, tr)
+
+    # Estimate Yhat using controls
+    mm_model_ctrls <- lm(Y~X1+X2, dat, subset = (tr==0))
+    Yhat_ctrls <- predict(mm_model_ctrls, dat)
+    # Estimate Yhat on all data
+    mm_model <- lm(Y~X1+X2, dat)
+    Yhat <- predict(mm_model, dat)
+
+
+    # Create matches/strata for estimation
+    mm_strata <- Strata(treatment = tr, prediction = Yhat, strata = 5)
+    mm_strata_ctrls <- Strata(treatment = tr, prediction = Yhat_ctrls, strata = 5)
+    print(c(
+      "All Obs"  = within_group_mean(mm_strata, Yhat, Y),
+      "Controls" = within_group_mean(mm_strata_ctrls, Yhat_ctrls, Y)
+    ))
+
+    # Reshape for plotting
+    stratum <- rep(1:length(mm_strata), sapply(mm_strata, nrow))
+    mm_strata <- data.frame(stratum, "residual" = Yhat - Y, do.call(rbind, mm_strata))
+    stratum <- rep(1:length(mm_strata_ctrls), sapply(mm_strata_ctrls, nrow))
+    mm_strata_ctrls <- data.frame(stratum, "residual" = Yhat_ctrls - Y, do.call(rbind, mm_strata_ctrls))
+
+    p1 <- ggplot(mm_strata, aes(residual)) + geom_histogram(aes(fill = factor(treatment)), binwidth = 0.5, position = "dodge") + facet_grid(~stratum) + ggtitle("Model fit to all observations")
+    p2 <- ggplot(mm_strata_ctrls, aes(residual)) + geom_histogram(aes(fill = factor(treatment)), binwidth = 0.5, position = "dodge") + facet_grid(~stratum) + ggtitle("Model fit only to controls")
+
+    grid.arrange(p1, p2)
+}

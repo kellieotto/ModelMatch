@@ -30,7 +30,8 @@ B <- 1000
 N <- 100
 @
 
-\section{Gaussian Errors in the Linear Model}
+\section{Comparing Model-based Matching to Other Methods}
+\subsection{Gaussian Errors in the Linear Model}
 <<f1, fig.align="center", fig.width=8, fig.height=8>>=
 res <- simulate_estimation(gamma, B = B, N = N, "random")
 plot_est_by_gamma(res) +
@@ -87,7 +88,7 @@ print(xtable(tab3, digits = 3,
       include.colnames = TRUE)
 @
 
-\section{Misspecified Propensity Score Estimates}
+\subsection{Misspecified Propensity Score Estimates}
 <<f4, fig.align="center", fig.width=8, fig.height=8>>=
 res4 <- simulate_estimation(gamma, B = B, N = N, "misspecified pscore", alpha = 0.5)
 plot_est_by_gamma(res4) +
@@ -106,7 +107,7 @@ print(xtable(tab4, digits = 3,
       include.colnames = TRUE)
 @
 
-\section{Heteroskedastic Linear Model Errors}
+\subsection{Heteroskedastic Linear Model Errors}
 <<f5, fig.align="center", fig.width=8, fig.height=8>>=
 res5 <- simulate_estimation(gamma, B = B, N = N, selection="random", errors="heteroskedastic")
 plot_est_by_gamma(res5) +
@@ -143,7 +144,7 @@ print(xtable(tab8, digits = 3,
       include.colnames = TRUE)
 @
 
-\section{Heavy-tailed Linear Model Errors}
+\subsection{Heavy-tailed Linear Model Errors}
 <<f6, fig.align="center", fig.width=8, fig.height=8>>=
 res6 <- simulate_estimation(gamma, B = B, N = N, selection="random", errors="heavy")
 plot_est_by_gamma(res6) +
@@ -182,13 +183,120 @@ print(xtable(tab7, digits = 3,
       include.colnames = TRUE)
 @
 
+\section{Comparing Variants of Model-based Matching}
+<<reset_params>>=
+B <- 500
+N <- 100
+@
+
+<<mmcomp1, fig.align="center", fig.width=8, fig.height=8>>=
+mmcomp1 <- simulate_estimation_vary_mm(gamma, B, N)
+plot_est_by_gamma(mmcomp1) +
+  ggtitle("Estimates of Varying Levels of Constant Additive Treatment Effects\n Random Treatment Assignment") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+@
+
+<<tmm1, results="asis">>=
+tab_mmcomp1 <- sapply(gamma, function(g){
+  gamma_subset <- mmcomp1[mmcomp1$Gamma == g, -7]
+  apply(gamma_subset, 2, compute_rmse, g)
+})
+
+colnames(tab_mmcomp1) <- gamma
+print(xtable(tab_mmcomp1, digits = 3,
+      label = "tab:mmcomp1",
+      caption = "RMSE for various treatment effects; Random Treatment Assignment"),
+      include.rownames = TRUE,
+      include.colnames = TRUE)
+
+tab_mmcomp1_bias <- sapply(gamma, function(g){
+  gamma_subset <- mmcomp1[mmcomp1$Gamma == g, -7]
+  apply(gamma_subset, 2, function(x) mean(x, na.rm=TRUE)-g)
+})
+
+colnames(tab_mmcomp1_bias) <- gamma
+print(xtable(tab_mmcomp1_bias, digits = 3,
+      label = "tab:mmcomp1",
+      caption = "Bias for estimators; Random Treatment Assignment"),
+      include.rownames = TRUE,
+      include.colnames = TRUE)
+@
+
+
+<<mmcomp2, fig.align="center", fig.width=8, fig.height=8>>=
+mmcomp2 <- simulate_estimation_vary_mm(gamma, B, N, selection = "correlated")
+plot_est_by_gamma(mmcomp2) +
+  ggtitle("Estimates of Varying Levels of Constant Additive Treatment Effects\n Treatment Assignment with $cov(T, X_1) = 0.5$") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+@
+
+<<tmm2, results="asis">>=
+tab_mmcomp2 <- sapply(gamma, function(g){
+  gamma_subset <- mmcomp2[mmcomp2$Gamma == g, -7]
+  apply(gamma_subset, 2, compute_rmse, g)
+})
+
+colnames(tab_mmcomp2) <- gamma
+print(xtable(tab_mmcomp2, digits = 3,
+      label = "tab:mmcomp2",
+      caption = "RMSE for various treatment effects; Treatment Assignment with $cov(T, X_1) = 0.5$"),
+      include.rownames = TRUE,
+      include.colnames = TRUE)
+
+tab_mmcomp2_bias <- sapply(gamma, function(g){
+  gamma_subset <- mmcomp2[mmcomp2$Gamma == g, -7]
+  apply(gamma_subset, 2, function(x) mean(x, na.rm=TRUE)-g)
+})
+
+colnames(tab_mmcomp2_bias) <- gamma
+print(xtable(tab_mmcomp2_bias, digits = 3,
+      label = "tab:mmcomp2",
+      caption = "Bias for estimators; Treatment Assignment with $cov(T, X_1) = 0.5$"),
+      include.rownames = TRUE,
+      include.colnames = TRUE)
+@
+
+<<mmcomp3, fig.align="center", fig.width=8, fig.height=8>>=
+mmcomp3 <- simulate_estimation_vary_mm(gamma, B, N, selection = "correlated", nu = -1)
+plot_est_by_gamma(mmcomp3) +
+  ggtitle("Estimates of Varying Levels of Constant Additive Treatment Effects\n Treatment Assignment with $cov(T, X_1) = -1$") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+@
+
+<<tmm3, results="asis">>=
+tab_mmcomp3 <- sapply(gamma, function(g){
+  gamma_subset <- mmcomp3[mmcomp3$Gamma == g, -7]
+  apply(gamma_subset, 2, compute_rmse, g)
+})
+
+colnames(tab_mmcomp3) <- gamma
+print(xtable(tab_mmcomp2, digits = 3,
+      label = "tab:mmcomp3",
+      caption = "RMSE for various treatment effects; Treatment Assignment with $cov(T, X_1) = -1$"),
+      include.rownames = TRUE,
+      include.colnames = TRUE)
+
+tab_mmcomp3_bias <- sapply(gamma, function(g){
+  gamma_subset <- mmcomp3[mmcomp3$Gamma == g, -7]
+  apply(gamma_subset, 2, function(x) mean(x, na.rm=TRUE)-g)
+})
+
+colnames(tab_mmcomp3_bias) <- gamma
+print(xtable(tab_mmcomp3_bias, digits = 3,
+      label = "tab:mmcomp3",
+      caption = "Bias for estimators; Treatment Assignment with $cov(T, X_1) =-1$"),
+      include.rownames = TRUE,
+      include.colnames = TRUE)
+@
 
 \section{Hypothesis Testing}
-We compare the power of stratified permutation tests using model-based matching with pairs and with strata to the t-test from OLS and an unstratified permutation test.
+We compare the power of stratified permutation tests using model-based matching with different numbers of strata to the t-test from OLS.
+
+We've uncovered an interesting problem: if we use estimates $\hat{Y}$ based on the controls only, we get anti-conservative tests.  The actual level of our permutation tests is much higher than the nominal level.
 
 <<setup_tst>>=
 Btst <- 1000
-gammatst <- c(0.5, 1)
+gammatst <- c(0, 0.25, 0.5)
 Ntst <- 50
 set.seed(456)
 @
@@ -196,32 +304,32 @@ set.seed(456)
 <<compare_tests1, fig.align="center", fig.width=8, fig.height=6>>=
 tst1 <- simulate_tests(gammatst, Btst, Ntst)
 plot_power_curves(tst1) +
-  ggtitle("Power Curves for Varying Magnitude of Treatment Effects\n Random Treatment Assignment")
+  ggtitle("Power Curves for Varying Magnitude of Treatment Effects\n Random Treatment Assignment") + geom_abline(intercept=0, slope=1, linetype = "dashed")
 @
 
 <<compare_tests2, fig.align="center", fig.width=8, fig.height=6>>=
 tst2 <- simulate_tests(gammatst, Btst, Ntst, selection = "correlated")
 plot_power_curves(tst2) +
-  ggtitle("Power Curves for Varying Magnitude of Treatment Effects\n Treatment Assignment with Cov(T, X1) = 0.5")
+  ggtitle("Power Curves for Varying Magnitude of Treatment Effects\n Treatment Assignment with Cov(T, X1) = 0.5")+ geom_abline(intercept=0, slope=1, linetype = "dashed")
 @
 
 <<compare_tests3, fig.align="center", fig.width=8, fig.height=6>>=
 tst3 <- simulate_tests(gammatst, Btst, Ntst, selection = "correlated", nu = 1)
 plot_power_curves(tst3) +
-  ggtitle("Power Curves for Varying Magnitude of Treatment Effects\n Treatment Assignment with Cov(T, X1) = 1")
+  ggtitle("Power Curves for Varying Magnitude of Treatment Effects\n Treatment Assignment with Cov(T, X1) = 1") + geom_abline(intercept=0, slope=1, linetype = "dashed")
 @
 
 <<compare_tests4, fig.align="center", fig.width=8, fig.height=6>>=
 tst4 <- simulate_tests(gammatst, Btst, Ntst, errors = "heteroskedastic")
 plot_power_curves(tst4) +
-  ggtitle("Power Curves for Varying Magnitude of Treatment Effects\n Random Treatment Assignment\n Heteroskedastic Errors")
+  ggtitle("Power Curves for Varying Magnitude of Treatment Effects\n Random Treatment Assignment\n Heteroskedastic Errors") + geom_abline(intercept=0, slope=1, linetype = "dashed")
 
 @
 
 <<compare_tests5, fig.align="center", fig.width=8, fig.height=6>>=
 tst5 <- simulate_tests(gammatst, Btst, Ntst, errors = "heavy")
 plot_power_curves(tst5) +
-  ggtitle("Power Curves for Varying Magnitude of Treatment Effects\n Random Treatment Assignment\n Laplacian Errors")
+  ggtitle("Power Curves for Varying Magnitude of Treatment Effects\n Random Treatment Assignment\n Laplacian Errors") + geom_abline(intercept=0, slope=1, linetype = "dashed")
 @
 
 

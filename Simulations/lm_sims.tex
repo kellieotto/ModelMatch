@@ -76,7 +76,8 @@ Set simulation parameters
 \end{kframe}
 \end{knitrout}
 
-\section{Gaussian Errors in the Linear Model}
+\section{Comparing Model-based Matching to Other Methods}
+\subsection{Gaussian Errors in the Linear Model}
 \begin{knitrout}
 \definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}
 
@@ -172,7 +173,7 @@ MM Pairs & 0.302 & 0.313 & 0.292 & 0.304 \\
 \end{table}
 
 
-\section{Misspecified Propensity Score Estimates}
+\subsection{Misspecified Propensity Score Estimates}
 \begin{knitrout}
 \definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}
 
@@ -204,7 +205,7 @@ MM Pairs & 0.293 & 0.288 & 0.292 & 0.288 \\
 \end{table}
 
 
-\section{Heteroskedastic Linear Model Errors}
+\subsection{Heteroskedastic Linear Model Errors}
 \begin{knitrout}
 \definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}
 
@@ -267,7 +268,7 @@ MM Pairs & 0.369 & 0.371 & 0.359 & 0.357 \\
 \end{table}
 
 
-\section{Heavy-tailed Linear Model Errors}
+\subsection{Heavy-tailed Linear Model Errors}
 \begin{knitrout}
 \definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}
 
@@ -331,9 +332,167 @@ MM Pairs & 0.402 & 0.411 & 0.397 & 0.398 \\
 \end{table}
 
 
+\section{Comparing Variants of Model-based Matching}
+
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}
+
+{\centering \includegraphics[width=\maxwidth]{figure/mmcomp1-1} 
+
+}
+
+
+
+\end{knitrout}
+
+% latex table generated in R 3.2.0 by xtable 1.8-0 package
+% Thu Feb 11 10:58:08 2016
+\begin{table}[ht]
+\centering
+\begin{tabular}{rrrrr}
+  \hline
+ & 0.01 & 0.1 & 1 & 10 \\ 
+  \hline
+MM Pairs & 0.272 & 0.270 & 0.272 & 0.324 \\ 
+  MM Strata & 0.210 & 0.201 & 0.209 & 0.273 \\ 
+  MM Unstratified & 0.205 & 0.198 & 0.199 & 0.328 \\ 
+  MM Pairs (ctrls) & 0.268 & 0.270 & 0.267 & 0.268 \\ 
+  MM Strata (ctrls) & 0.214 & 0.205 & 0.210 & 0.204 \\ 
+  MM Unstratified (ctrls) & 0.211 & 0.204 & 0.204 & 0.203 \\ 
+   \hline
+\end{tabular}
+\caption{RMSE for various treatment effects; Random Treatment Assignment} 
+\label{tab:mmcomp1}
+\end{table}
+% latex table generated in R 3.2.0 by xtable 1.8-0 package
+% Thu Feb 11 10:58:08 2016
+\begin{table}[ht]
+\centering
+\begin{tabular}{rrrrr}
+  \hline
+ & 0.01 & 0.1 & 1 & 10 \\ 
+  \hline
+MM Pairs & -0.008 & -0.026 & -0.017 & -0.109 \\ 
+  MM Strata & -0.007 & -0.018 & 0.001 & -0.120 \\ 
+  MM Unstratified & -0.006 & -0.021 & -0.008 & -0.196 \\ 
+  MM Pairs (ctrls) & -0.005 & -0.016 & -0.001 & -0.021 \\ 
+  MM Strata (ctrls) & -0.009 & -0.016 & 0.011 & -0.011 \\ 
+  MM Unstratified (ctrls) & -0.007 & -0.018 & 0.011 & -0.010 \\ 
+   \hline
+\end{tabular}
+\caption{Bias for estimators; Random Treatment Assignment} 
+\label{tab:mmcomp1}
+\end{table}
+
+
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}
+
+{\centering \includegraphics[width=\maxwidth]{figure/mmcomp2-1} 
+
+}
+
+
+
+\end{knitrout}
+
+% latex table generated in R 3.2.0 by xtable 1.8-0 package
+% Thu Feb 11 10:59:34 2016
+\begin{table}[ht]
+\centering
+\begin{tabular}{rrrrr}
+  \hline
+ & 0.01 & 0.1 & 1 & 10 \\ 
+  \hline
+MM Pairs & 0.264 & 0.259 & 0.291 & 1.358 \\ 
+  MM Strata & 0.198 & 0.196 & 0.227 & 1.307 \\ 
+  MM Unstratified & 0.189 & 0.187 & 0.228 & 1.557 \\ 
+  MM Pairs (ctrls) & 0.299 & 0.283 & 0.267 & 0.278 \\ 
+  MM Strata (ctrls) & 0.245 & 0.234 & 0.218 & 0.220 \\ 
+  MM Unstratified (ctrls) & 0.241 & 0.231 & 0.216 & 0.218 \\ 
+   \hline
+\end{tabular}
+\caption{RMSE for various treatment effects; Treatment Assignment with $cov(T, X_1) = 0.5$} 
+\label{tab:mmcomp2}
+\end{table}
+% latex table generated in R 3.2.0 by xtable 1.8-0 package
+% Thu Feb 11 10:59:34 2016
+\begin{table}[ht]
+\centering
+\begin{tabular}{rrrrr}
+  \hline
+ & 0.01 & 0.1 & 1 & 10 \\ 
+  \hline
+MM Pairs & 0.016 & -0.015 & -0.119 & -1.185 \\ 
+  MM Strata & 0.011 & -0.010 & -0.123 & -1.167 \\ 
+  MM Unstratified & 0.013 & -0.010 & -0.138 & -1.424 \\ 
+  MM Pairs (ctrls) & 0.020 & -0.005 & 0.012 & 0.012 \\ 
+  MM Strata (ctrls) & 0.013 & 0.000 & 0.010 & 0.000 \\ 
+  MM Unstratified (ctrls) & 0.017 & 0.002 & 0.011 & 0.001 \\ 
+   \hline
+\end{tabular}
+\caption{Bias for estimators; Treatment Assignment with $cov(T, X_1) = 0.5$} 
+\label{tab:mmcomp2}
+\end{table}
+
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}
+
+{\centering \includegraphics[width=\maxwidth]{figure/mmcomp3-1} 
+
+}
+
+
+
+\end{knitrout}
+
+% latex table generated in R 3.2.0 by xtable 1.8-0 package
+% Thu Feb 11 10:59:34 2016
+\begin{table}[ht]
+\centering
+\begin{tabular}{rrrrr}
+  \hline
+ & 0.01 & 0.1 & 1 & 10 \\ 
+  \hline
+MM Pairs & 0.264 & 0.259 & 0.291 & 1.358 \\ 
+  MM Strata & 0.198 & 0.196 & 0.227 & 1.307 \\ 
+  MM Unstratified & 0.189 & 0.187 & 0.228 & 1.557 \\ 
+  MM Pairs (ctrls) & 0.299 & 0.283 & 0.267 & 0.278 \\ 
+  MM Strata (ctrls) & 0.245 & 0.234 & 0.218 & 0.220 \\ 
+  MM Unstratified (ctrls) & 0.241 & 0.231 & 0.216 & 0.218 \\ 
+   \hline
+\end{tabular}
+\caption{RMSE for various treatment effects; Treatment Assignment with $cov(T, X_1) = -1$} 
+\label{tab:mmcomp3}
+\end{table}
+% latex table generated in R 3.2.0 by xtable 1.8-0 package
+% Thu Feb 11 10:59:34 2016
+\begin{table}[ht]
+\centering
+\begin{tabular}{rrrrr}
+  \hline
+ & 0.01 & 0.1 & 1 & 10 \\ 
+  \hline
+MM Pairs & -0.014 & -0.042 & -0.304 & -3.186 \\ 
+  MM Strata & -0.009 & -0.036 & -0.315 & -3.201 \\ 
+  MM Unstratified & -0.008 & -0.035 & -0.325 & -3.284 \\ 
+  MM Pairs (ctrls) & -0.009 & -0.014 & 0.016 & -0.012 \\ 
+  MM Strata (ctrls) & -0.009 & -0.009 & 0.012 & -0.009 \\ 
+  MM Unstratified (ctrls) & -0.008 & -0.008 & 0.016 & -0.011 \\ 
+   \hline
+\end{tabular}
+\caption{Bias for estimators; Treatment Assignment with $cov(T, X_1) =-1$} 
+\label{tab:mmcomp3}
+\end{table}
+
 
 \section{Hypothesis Testing}
-We compare the power of stratified permutation tests using model-based matching with pairs and with strata to the t-test from OLS and an unstratified permutation test.
+We compare the power of stratified permutation tests using model-based matching with different numbers of strata to the t-test from OLS.
+
+We've uncovered an interesting problem: if we use estimates $\hat{Y}$ based on the controls only, we get anti-conservative tests.  The actual level of our permutation tests is much higher than the nominal level.
 
 
 
