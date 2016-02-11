@@ -18,10 +18,7 @@
 %\usepackage{floatrow}
 %\usepackage{epsfig}
 %\usepackage[usenames,dvipsnames,svgnames,table]{xcolor}
-\usepackage[colorlinks=true,
-            urlcolor=RawSienna,
-            linkcolor=RawSienna,
-            citecolor=NavyBlue]{hyperref}
+\usepackage{hyperref}
 %\floatsetup[table]{capposition=top}
 %\floatsetup[figure]{capposition=top}
 
@@ -117,8 +114,121 @@ Rosenbaum's framework is limited to the case of binary treatment, where individu
 Shah and Bühlmann (2015) use residuals to test for the goodness of fit of high-dimensional linear models by testing for nonlinear signals in the residuals. %http://www.statslab.cam.ac.uk/~rds37/papers/RPtests
 
 
-
+\newpage
 \section{Theory}
+\subsection{Fitting the model}
+What's the difference between fitting our model for matching using all units and fitting the model using controls only?
+Define $X_c$ and $Y_c$ to be the design matrix and responses for controls.  
+Let $X_t$ and $Y_t$ be defined analogously for the treatment group.
+Then, let $X$ and $Y$ be the design matrix and responses for all observations:
+
+$$X=\left[\begin{array}{c}
+X_c \\
+\hline
+X_t
+\end{array}\right],Y=\left[\begin{array}{c}
+Y_c \\
+\hline
+Y_t
+\end{array}\right]$$
+
+If we fit our model using only the controls, then the predicted values will be
+
+\begin{equation}
+\hat{Y}_{mod1} = X(X_c'X_c)^{-1}X_c'Y
+\end{equation}
+
+If we fit our model using all observations, then the predicted values will be 
+
+\begin{equation}
+\hat{Y}_{mod2} = X(X'X)^{-1}X'Y
+\end{equation}
+
+Let's expand this out in terms of $X_c, X_t, Y_c,$ and $Y_t$.  First, it's clear that
+
+\begin{equation}
+X'Y = X_c'Y_c + X_t'Y_t
+\end{equation}
+
+Now, let's consider the inverse covariance matrix.  For notational simplicity, define $C = X_c'X_c$ and $T = X_t'X_t$.  Then
+
+\begin{align*}
+(X'X)^{-1} &= \left( C + T\right)^{-1} \\
+&= C^{-1} - (I + C^{-1}T)^{-1}C^{-1}TC^{-1} \tag*{using a result from \cite{miller_inverse_1981}}
+\end{align*}
+
+Let $N = (I + C^{-1}T)^{-1}$.  The predicted responses from the second model are
+
+\begin{align}
+X(X'X)^{-1}X'Y &= X\left( C^{-1} - NC^{-1}TC^{-1}\right)\left( X_c'Y_c + X_t'Y_t \right) \\
+&= X \left( C^{-1}X_c'Y_c + C^{-1}X_t'Y_t - NC^{-1}TC^{-1}(X_c'Y_c + X_t'Y_t)\right)
+\end{align}
+
+The difference in predictions from the two models is
+
+\begin{equation}
+\hat{Y}_{mod2} - \hat{Y}_{mod1} = XC^{-1}X_t'Y_t - XNC^{-1}TC^{-1}(X_c'Y_c + X_t'Y_t)
+\end{equation}
+
+Our choice of models matters for hypothesis testing.  In particular, when we match using the model fit only to controls, $mod1$, we get a permutation test whose level is higher than the nominal level.  This comes from additional correlation between the residuals and the treatment.
+\begin{align}
+\cov(Y - \hat{Y}_{mod1}, W) &= \cov(Y, W) - XC^{-1}X_c'\cov(Y_c, W) \\
+\cov(Y - \hat{Y}_{mod2}, W) &= \cov(Y, W) - XC^{-1}X_c'\cov(Y_c, W) - XC^{-1}X_t'\cov(Y_t, W) \\
+&\qquad  + XNC^{-1}TC^{-1}X'\cov(Y, W)
+\end{align}
+
+Thus the difference in covariances is
+\begin{equation}\label{diffcov}
+\cov(Y - \hat{Y}_{mod1}, W)-\cov(Y - \hat{Y}_{mod2}, W) = XC^{-1}X_t'\cov(Y_t, W)-  XNC^{-1}TC^{-1}X'\cov(Y, W)
+\end{equation}
+
+Now let's compute the two covariance terms.
+
+\begin{align*}
+\cov(Y_t, W) &= \cov(\beta_0 + \beta_1X_1 + \beta_2 X_2 + \gamma + \eps, W) \\
+&= \beta_1 \cov(X_1, W) + \beta_2 \cov(X_2, W) 
+\end{align*}
+
+\begin{align*}
+\cov(Y, W) &= \cov(WY_t + (1-W)Y_c, W) \\
+&= \cov(WY_t, W) - \cov(WY_c, W) + \cov(Y_c, W) \\
+&= \cov(W(\beta_0 + \beta_1X_1 + \beta_2 X_2 + \gamma + \eps), W) -  \cov(W(\beta_0 + \beta_1X_1 + \beta_2 X_2 + \eps), W) + \cov(Y_c, W) \\
+&= \gamma \var(W) + \beta_1 \cov(X_1, W) + \beta_2 \cov(X_2, W) 
+\end{align*}
+
+Thus we can rewrite \eqref{diffcov} as
+\begin{align}\label{diffcov2}
+\cov(Y - \hat{Y}_{mod1}, W)-\cov(Y - \hat{Y}_{mod2}, W) &=\left(  \beta_1 \cov(X_1, W) + \beta_2 \cov(X_2, W) \right) \times \nonumber \\
+&\qquad \left( XC^{-1}X_t' - XNC^{-1}TC^{-1}X'\right) \nonumber\\
+&\qquad - \gamma\var(W) XNC^{-1}TC^{-1}X'
+\end{align}
+
+If treatment assignment is independent of the covariates, then the first term will be 0.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+\newpage
 \subsection{MM for Testing}
 
 
@@ -146,28 +256,31 @@ If selection on observables holds, i.e. you are so lucky to have accounted for a
 &= -ATE
 \end{align*}
 
+We estimate $\tau$ by $\hat{\tau}$:
+
+$$\hat{\tau} = \frac{1}{N_S} \sum_{s=1}^{N_S} \left( \frac{1}{n_{st}} \sum_{i: T=1, S=s} (\hat{Y}_i - Y_i) - \frac{1}{n_{sc}} \sum_{i: T=0, S=s} (\hat{Y}_i - Y_i)\right)$$
 
 \subsubsection{When $T$ is discrete}
 We can generalize the previous result when there are more than two treatments.
 
-\subsubsection{When $T$ is continuous}
-Suppose we estimate $\hat{Y} = f(X)$ and bin observations according to their predicted $\hat{Y}$.  Then within bins, we can estimate $\ex(Y \mid T)$.  Suppose that $Y = f(X) + g(X, T) + \eps(X)$, where $\eps(X) \independent T$, $\ex(\eps(X) \mid X) = 0$, and the $\eps(X)$ are uncorrelated.  If we assume this linear relationship, we obtain a generalized additive model:
-
-$$\ex(Y \mid T, X) = \ex( f(X) + g(X, T) + \eps(X) \mid T, X) = f(X) + \ex( g(X,T) \mid X, T) $$
-
-Within bins, all the $\hat{Y}$ within bins should be close to each other simply because we've used it as the score by which to stratify.  We can estimate $g_X(T)$ for each bin, too, using any method desired.
-
-$$\ex(Y \mid T) = \ex_X\left[ \ex(Y \mid T, X) \right] = \ex_X(f(X) + g(X,T) \mid T) = \ex_X(\hat{Y}) + g_{\hat{Y}}(T) $$
-where we define $g_{\hat{Y}}(T) = \ex_X(g(X, T) \mid T)$, where the expectation is taken only over $X$ with observations falling in the bin defined by $\hat{Y}$.  The equation above implies that within small enough bins of $\hat{Y}$, the expected response is the mean predicted response plus the treatment effect, which is just a function of $T$ and not of $X$. \\
-
-Estimating $g_{\hat{Y}}(T)$ separately within bins allows for $g(X, T)$ to behave nonlinearly in the covariates.
-
-Examples:
-\begin{enumerate}
-\item $f(X) = a + bX$ and the treatment effect is a multiple of $\tau$ according to the treatment dose, independent of $X$: then $Y = a + bX + \tau T + \eps$
-\item $f(X) = a + bX$ and the treatment effect is a multiple of $\tau$ according to the treatment dose interacted with $X$: then $Y = a + (b + \tau T)X + \eps$
-\item For $X<5$, we are in case 1), and for $X\geq 5$ we are in case 2).  Then for bins of $\hat{Y}$ less than $a + 5b$, we estimate $g_{\hat{Y}}(T) = \tau T$ and for bins of $\hat{Y}$ greater than $a + 5b$, we estimate $g_{\hat{Y}}(T) = \tau X T$.  
-\end{enumerate}
+%\subsubsection{When $T$ is continuous}
+%Suppose we estimate $\hat{Y} = f(X)$ and bin observations according to their predicted $\hat{Y}$.  Then within bins, we can estimate $\ex(Y \mid T)$.  Suppose that $Y = f(X) + g(X, T) + \eps(X)$, where $\eps(X) \independent T$, $\ex(\eps(X) \mid X) = 0$, and the $\eps(X)$ are uncorrelated.  If we assume this linear relationship, we obtain a generalized additive model:
+%
+%$$\ex(Y \mid T, X) = \ex( f(X) + g(X, T) + \eps(X) \mid T, X) = f(X) + \ex( g(X,T) \mid X, T) $$
+%
+%Within bins, all the $\hat{Y}$ within bins should be close to each other simply because we've used it as the score by which to stratify.  We can estimate $g_X(T)$ for each bin, too, using any method desired.
+%
+%$$\ex(Y \mid T) = \ex_X\left[ \ex(Y \mid T, X) \right] = \ex_X(f(X) + g(X,T) \mid T) = \ex_X(\hat{Y}) + g_{\hat{Y}}(T) $$
+%where we define $g_{\hat{Y}}(T) = \ex_X(g(X, T) \mid T)$, where the expectation is taken only over $X$ with observations falling in the bin defined by $\hat{Y}$.  The equation above implies that within small enough bins of $\hat{Y}$, the expected response is the mean predicted response plus the treatment effect, which is just a function of $T$ and not of $X$. \\
+%
+%Estimating $g_{\hat{Y}}(T)$ separately within bins allows for $g(X, T)$ to behave nonlinearly in the covariates.
+%
+%Examples:
+%\begin{enumerate}
+%\item $f(X) = a + bX$ and the treatment effect is a multiple of $\tau$ according to the treatment dose, independent of $X$: then $Y = a + bX + \tau T + \eps$
+%\item $f(X) = a + bX$ and the treatment effect is a multiple of $\tau$ according to the treatment dose interacted with $X$: then $Y = a + (b + \tau T)X + \eps$
+%\item For $X<5$, we are in case 1), and for $X\geq 5$ we are in case 2).  Then for bins of $\hat{Y}$ less than $a + 5b$, we estimate $g_{\hat{Y}}(T) = \tau T$ and for bins of $\hat{Y}$ greater than $a + 5b$, we estimate $g_{\hat{Y}}(T) = \tau X T$.  
+%\end{enumerate}
 
 \section{Empirical results}
 
