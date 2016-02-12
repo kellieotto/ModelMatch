@@ -91,6 +91,9 @@ within_group_mean <- function(strata, prediction, response, shift = 0){
 #' @return a list containing the results: attributes diff_means (the estimated difference), perm_distribution (simulated permutation distribution), and pvalue (p-value for the test)
 permu_test_mean_slow <- function(strata, prediction, treatment, response, iters=1000, shift = 0){
   GG <- length(strata)
+  if(length(prediction) == 1){prediction <- rep(prediction, length(treatment))}
+  if(length(response) == 1){response <- rep(response, length(treatment))}
+
   truth <- sum(abs(within_group_mean(strata, prediction, response)))/GG
   response_shift <- response - shift*treatment
   perm_dist <- replicate(iters, {perm_groups <- permute_within_groups(strata)
@@ -114,10 +117,14 @@ permu_test_mean_slow <- function(strata, prediction, treatment, response, iters=
 #' @return a list containing the results: attributes diff_means (the estimated difference), perm_distribution (simulated permutation distribution), and pvalue (p-value for the test)
 permu_test_mean <- function(strata, prediction, treatment, response, iters=1000, shift = 0){
   GG <- length(strata)
+  if(length(prediction) == 1){prediction <- rep(prediction, length(treatment))}
+  if(length(response) == 1){response <- rep(response, length(treatment))}
+
   truth <- sum(abs(within_group_mean_cpp(strata, prediction, response)))/GG
   response_shift <- response - shift*treatment
+  perm_groups <- strata
   perm_dist <- replicate(iters, {
-    perm_groups <- permute_within_groups_cpp(strata)
+    perm_groups <- permute_within_groups_cpp(perm_groups)
     sum(abs(within_group_mean_cpp(perm_groups, prediction, response_shift, shift = shift)))
     })/GG
   pval <- c("p_upper" = sum(perm_dist >= truth)/iters,

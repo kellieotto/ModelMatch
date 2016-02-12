@@ -20,7 +20,7 @@ List permute_within_groups_cpp(List strata){
   int G = strata.size();
 
   for(int g = 0; g < G; g++){
-    Rcpp::List tmp = strata(g);
+    Rcpp::List tmp = permuted(g);
     tmp(2) = randomShuffle(tmp(2)); // Third column is treatment
     permuted[g] = tmp;
   }
