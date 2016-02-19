@@ -170,8 +170,8 @@ In that case, given $\hat{Y}_i$, we know which stratum $i$ belongs to}
 %
 
 
-\subsubsection{When $T$ is discrete}
-We can generalize the previous result when there are more than two treatments.
+%\subsubsection{When $T$ is discrete}
+%We can generalize the previous result when there are more than two treatments.
 
 %\subsubsection{When $T$ is continuous}
 %Suppose we estimate $\hat{Y} = f(X)$ and bin observations according to their predicted $\hat{Y}$.  Then within bins, we can estimate $\ex(Y \mid T)$.  Suppose that $Y = f(X) + g(X, T) + \eps(X)$, where $\eps(X) \independent T$, $\ex(\eps(X) \mid X) = 0$, and the $\eps(X)$ are uncorrelated.  If we assume this linear relationship, we obtain a generalized additive model:
@@ -196,9 +196,9 @@ We can generalize the previous result when there are more than two treatments.
 \newpage
 \subsection{Fitting the model}
 What's the difference between fitting our model for matching using all units and fitting the model using controls only?  
+We'll use a simple example in the Neyman-Rubin framework with a simple linear regression prediction to illustrate the bias introduced by fitting the model different ways.
 Let $\hat{Y}_{ctrl}$ and $\hat{\tau}_{ctrl}$ denote the predictions and the estimate, respectively, using only the controls in the training group, and let $\hat{Y}_{all}$ and $\hat{\tau}_{all}$ denote the predictions and the estimate, respectively, using all units.
 
-\subsubsection{Simple linear regression}
 Suppose we have a population of $N$ individuals.  Each individual has two potential outcomes, $Y_i(0)$ and $Y_i(1)$, their responses to the control and the treatment conditions, respectively.  Suppose without loss of generality that units $i=1,\dots, n$ receive the control condition and $i = n+1,\dots, N$ receive treatment, where $N = 2n$.  Suppose that there is a constant, additive treatment effect.  That is, for each individual, $Y_i(1) - Y_i(0) = \Delta$ for some $\Delta \in \reals$.  Let $\overline{c} = \frac{1}{N}\sum_{i=1}^N Y_i(0)$, $\overline{c}_c = \frac{1}{n}\sum_{i=1}^n Y_i(0)$, and $\overline{c}_t = \frac{1}{n}\sum_{i=n+1}^N Y_i(0)$.  Define $\overline{t}, \overline{t}_c$, and $\overline{t}_t$ analogously using $Y_i(1)$ in place of $Y_i(0)$.
 
 Suppose that we have no information on covariates.  Then our best guess using controls only is $\hat{Y}_{ctrl} = \overline{c}_c$ and our best guess using all units is $\hat{Y}_{all} = \overline{Y} = \overline{c} + \frac{\Delta}{2}$.  Since $\hat{Y}_{ctrl}$ and $\hat{Y}_{all}$ are constant for all units, then $\hat{\tau}_{ctrl} = \hat{\tau}_{all}$ and so using either prediction will give identical estimates and tests.
@@ -213,7 +213,7 @@ Suppose now that we have information on one covariate.  Suppose that $Y_i(0) = c
 Thus, the estimators are
 
 \begin{align}
-\hat{\tau}_{ctrl} &= \frac{1}{n}\sum_{i = n+1}^N (Y_i(1) - \hat{Y}_{i, ctrl}) - \frac{1}{n}\sum_{i=1}^n (Y_i(0) - \hat{Y}_{i, ctrl} ) \nonumber \\
+\hat{\tau}_{ctrl} &= \frac{1}{n}\sum_{i = n+1}^N (Y_i - \hat{Y}_{i, ctrl}) - \frac{1}{n}\sum_{i=1}^n (Y_i - \hat{Y}_{i, ctrl} ) \nonumber \\
 &=  \frac{1}{n}\sum_{i = n+1}^N (c_i + X_i + \Delta - \overline{c}_c - \overline{X}_c - r_c \frac{s_{Y_c}}{s_{X_c}}(X_i - \overline{X}_c)) - \frac{1}{n}\sum_{i=1}^n (c_i + X_i - \overline{c}_c - \overline{X}_c - r_c \frac{s_{Y_c}}{s_{X_c}}(X_i - \overline{X}_c))  \nonumber \\
 &= \Delta+  \frac{1}{n}\sum_{i = n+1}^N (c_i + X_i - r_c \frac{s_{Y_c}}{s_{X_c}}(X_i - \overline{X}_c)) - \frac{1}{n}\sum_{i=1}^n (c_i + X_i - r_c \frac{s_{Y_c}}{s_{X_c}}(X_i - \overline{X}_c))  \nonumber \\
 &= \Delta + \overline{c}_t + \overline{X}_t - r_c \frac{s_{Y_c}}{s_{X_c}}(\overline{X}_t - \overline{X}_c) - \overline{c}_c - \overline{X}_c  \nonumber \\
@@ -249,6 +249,46 @@ $$\ex\left( 1 - r\frac{s_{Y}}{s_{X}} \right) = \Delta \frac{\cov(X, T)}{\var{X}}
 \textcolor{red}{but what we're really worried about is $\ex((1- r\frac{s_{Y}}{s_{X}})(\overline{X}_t - \overline{X}_c))$}
 
 Thus, $\hat{\tau}_{all}$ is a biased estimator of $\Delta$.  This simple example illustrates why when doing estimation, we want to fit our predictive model $\hat{Y} = f(X_1, \dots, X_p)$ using the controls only.  If we use all of the observations, then we capture some of the effect of the predictors which are correlated with treatment assignment.
+
+Let's turn our attention to hypothesis testing.
+We'll use the same test statistic for our tests, either $\hat{\tau}_{ctrl}$ or $\hat{\tau}_{all}$.
+In the math that follows, we omit the subscript for which model we used to predict $\hat{Y}$.
+Let $T^* = (T_1^*, \dots, T_N^*) = \pi(T_1, \dots, T_N)$ be a permutation of the treatment assignments, where $\pi$ denotes a permutation operator.
+Our test statistic can be written
+
+\begin{equation}
+\tau(T^*) = \frac{1}{n} \sum_{i: T_i^* =1}(Y_i - \hat{Y}_i) - \sum_{i: T_i^* = 0} (Y_i - \hat{Y}_i)
+\end{equation}
+
+Suppose we fix $T_1, \dots, T_N$ and obtain some permuted treatment vector $T^*$.
+Our test statistic simplifies:
+
+\begin{align*}
+\tau(T^*) &= \frac{1}{n} \sum_{i=1}^N T_i^* (Y_i - \hat{Y}_i) - (1-T_i^*)(Y_i - \hat{Y}_i) \\
+&= \frac{1}{n} \sum_{i=1}^N T_i^* (Y_i - \hat{Y}_i) - (1-T_i^*)(Y_i - \hat{Y}_i) \\
+&= \frac{1}{n} \sum_{i=1}^N 2T_i^* (Y_i - \hat{Y}_i) - (Y_i - \hat{Y}_i) \\
+&= \frac{1}{n} \sum_{i=1}^N 2T_i^* (T_iY_i(1) + (1-T_i)Y_i(0) - \hat{Y}_i) - (T_iY_i(1) + (1-T_i)Y_i(0) - \hat{Y}_i) \\
+&= \frac{1}{n} \sum_{i=1}^N 2T_i^*T_i (Y_i(1) - Y_i(0)) + 2T_i^*(Y_i(0) - \hat{Y}_i) - T_i (Y_i(1) - Y_i(0)) - (Y_i(0) - \hat{Y}_i) \\
+&= \frac{2\Delta}{n} \sum_{i=1}^N T_i^* T_i - \Delta + \frac{1}{n} \sum_{i=1}^N (2T_i^* - 1)(Y_i(0) - \hat{Y}_i)
+\end{align*}
+
+The first term counts the number of units with $T_i = T_i^* = 1$; this is the overlap between the actual and permuted treatment vector.
+In expectation, the number of such units is $N/4$ (since treatment assignment is independent between the actual and permuted treatments, and each is distributed as Binomial with probability of assignment $1/2$), so this term cancels the second term.
+
+The third term varies depending on whether we fit our model to controls only or to all observations.  It is the sum of the difference between each individual's potential outcome under control and their predicted outcome, multiplied by either $-1$ or $1$ according to whether $T_i^*$ is $0$ or $1$.
+When $\hat{Y}_i = \hat{Y}_{i, ctrl}$, the residuals $Y_i(0) - \hat{Y}_i$ may be systematically smaller in magnitude for individuals with $T_i=0$ than for individuals with $T_i=1$. Then the test statistic for the observed data will be
+
+$$\tau(T) = \frac{2\Delta}{n}\sum_{i=1}^N T_i - \Delta + \frac{1}{n}\sum_{i: T_i=1} (Y_i(0) - \hat{Y}_{i, ctrl}) - \frac{1}{n}\sum_{i: T_i=0} (Y_i(0) - \hat{Y}_{i, ctrl}) = \Delta + \frac{1}{n}\sum_{i: T_i=1} (Y_i(0) - \hat{Y}_{i, ctrl})$$
+
+since the residuals of a linear regression sum to zero.  Intuitively, it seems more likely that this sum will be extremely large in magnitude due to the way the model was fit, rather than any intrinsic treatment effect.  The residuals from this model are not exchangeable under the null hypothesis.  This will lead to a greater probability of incorrectly rejecting the null hypothesis.
+
+On the other hand, using $\hat{Y}_{i, all}$ will give an observed test statistic of
+
+$$\tau(T) = \Delta + \frac{1}{n}\sum_{i: T_i=1} (Y_i(0) - \hat{Y}_{i, all}) - \frac{1}{n}\sum_{i: T_i=0} (Y_i(0) - \hat{Y}_{i, all})$$ 
+
+Under the null of no treatment effect whatsoever, the residuals here are exchangeable.  Thus, we'd expect the second and third term to roughly cancel each other out under any random treatment assignment, although for any particular treatment assignment, they will differ somewhat.  
+
+In summary, we must fit our predictive models differently according to whether we intend to estimate the average treatment effect or to test the strong null hypothesis of no effect whatsoever.  The difference lies in the way we use the residuals.  Residualizing in estimation helps reduce variation and increase the precision of estimators, but helps detect variation due to the treatment when we do testing.  For estimation, we fit our predictive model to controls only to eliminate any leftover correlation between the treatment and other covariates.  However, for testing, we want to capture this correlation, so we must fit to all observations.
 
 \subsubsection{Multivariate regression}
 Define $X_c$ and $Y_c$ to be the design matrix and responses for controls.  
