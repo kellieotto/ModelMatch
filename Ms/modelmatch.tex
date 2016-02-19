@@ -116,8 +116,141 @@ Shah and Bühlmann (2015) use residuals to test for the goodness of fit of high-d
 
 \newpage
 \section{Theory}
+\subsection{MM for Testing}
+
+
+\subsection{MM for Estimation}
+\subsubsection{MM Estimate when $T$ is Binary}
+Recall that
+
+$$ATE = \ex(Y_1 -Y_0 )$$
+
+Let $\hat{Y} = f(X_1, \dots, X_p)$ be a prediction of the response, using the control group the training data.
+The prediction uses no information on the treatment -- it gives our best guess at the response one would have under the control condition.
+Suppose that we stratify the observations according to their values of $\hat{Y}$ to obtain $S$ strata.
+The $s$th stratum contains $n_{st}$ treated individuals and $n_{sc}$ control individuals for a total of $N_s = n_{st}+n_{sc}$ individuals, so $N = N_1 + \dots + N_S$.
+We estimate the ATE using $\hat{\tau}$:
+
+$$\hat{\tau} =  \sum_{s=1}^{S} \frac{N_S}{N}\left( \frac{1}{n_{st}} \sum_{i: T_i=1, S_i=s} (Y_i - \hat{Y}_i) - \frac{1}{n_{sc}} \sum_{i: T_i=0, S_i=s} (Y_i - \hat{Y}_i)\right)$$
+
+If treatment assignment is at random within strata, then $\hat{\tau}$ is unbiased for the ATE:
+
+\begin{align*}
+\ex(\hat{\tau}) &= \ex\left[ \sum_{s=1}^{S} \frac{N_S}{N}\left( \frac{1}{n_{st}} \sum_{i: T_i=1, S_i=s} (Y_i - \hat{Y}_i) - \frac{1}{n_{sc}} \sum_{i: T_i=0, S_i=s} (Y_i - \hat{Y}_i)\right) \right] \\
+&= \ex\left[ \sum_{s=1}^{S} \frac{N_s}{N}\left( \frac{1}{N_s} \sum_{i: S_i=s} \frac{T_i(Y_i - \hat{Y}_i)}{n_{st}/N_s} - \frac{(1-T_i)(Y_i - \hat{Y}_i)}{n_{sc}/N_s}\right) \right] \\
+&= \sum_{s=1}^{S} \frac{1}{N}\left( \sum_{i: S_i=s} \frac{\ex(T_i)(Y_i(1) - \hat{Y}_i)}{n_{st}/N_s} - \frac{\ex(1-T_i)(Y_i(0) - \hat{Y}_i)}{n_{sc}/N_s}\right)  \\
+&= \sum_{s=1}^{S} \frac{1}{N}\left( \sum_{i: S_i=s} \frac{(n_{st}/N_s)(Y_i(1) - \hat{Y}_i)}{n_{st}/N_s} - \frac{(n_{sc}/N_s)(Y_i(0) - \hat{Y}_i)}{n_{sc}/N_s}\right)  \tag*{assuming $n_{st}, n_{sc}$ are fixed within strata} \\
+&= \sum_{s=1}^{S} \frac{1}{N}\left( \sum_{i: S_i=s}(Y_i(1) - \hat{Y}_i) - (Y_i(0) - \hat{Y}_i) \right) \\
+&= \frac{1}{N}\sum_{i=1}^N Y_i(1)- Y_i(0) \\
+&= ATE
+\end{align*}
+
+\textcolor{red}{What happens if we don't have random treatment assignment but selection on observables holds?
+We need some sort of way to show that $\ex(T_i \mid X) = n_{st}/N_s$ anyways. 
+Is it the case that $\ex(T_i \mid X) = \ex(T_i \mid X_i) = \ex(T_i \mid \hat{Y}_i)$ ?
+In that case, given $\hat{Y}_i$, we know which stratum $i$ belongs to}
+
+
+
+%
+%\begin{align*}
+%\tau &= \ex( \hat{Y} - Y_1 \mid T=1 ) - \ex( \hat{Y} - Y_0 \mid T=0) \\
+%&= \ex\left[  \ex( \hat{Y} \mid T=1, X) - \ex(Y_1 \mid T=1, X) - \ex( \hat{Y} \mid T=0, X) + \ex( Y_0 \mid T=0, X) \right] \\
+%&= \ex\left[  \ex( \hat{Y} \mid X) - \ex(Y_1 \mid T=1, X) - \ex( \hat{Y} \mid X) + \ex( Y_0 \mid T=0, X) \right] \tag*{by conditional independence, $\hat{Y} \independent T \mid X$} \\
+%&= \ex\left[ - \ex(Y_1 \mid T=1, X) + \ex( Y_0 \mid T=0, X) \right] 
+%\end{align*}
+%
+%If selection on observables holds, i.e. you are so lucky to have accounted for all confounders $X$ so that $(Y_0, Y_1) \independent T \mid X$, then
+%
+%\begin{align*}
+%\tau &= \ex\left[ - \ex(Y_1 \mid T=1, X) + \ex( Y_0 \mid T=0, X) \right] \\
+%&= \ex\left[ -\ex(Y_1 \mid X) + \ex(Y_0 \mid X)\right] \\
+%&= -ATE
+%\end{align*}
+%
+
+
+\subsubsection{When $T$ is discrete}
+We can generalize the previous result when there are more than two treatments.
+
+%\subsubsection{When $T$ is continuous}
+%Suppose we estimate $\hat{Y} = f(X)$ and bin observations according to their predicted $\hat{Y}$.  Then within bins, we can estimate $\ex(Y \mid T)$.  Suppose that $Y = f(X) + g(X, T) + \eps(X)$, where $\eps(X) \independent T$, $\ex(\eps(X) \mid X) = 0$, and the $\eps(X)$ are uncorrelated.  If we assume this linear relationship, we obtain a generalized additive model:
+%
+%$$\ex(Y \mid T, X) = \ex( f(X) + g(X, T) + \eps(X) \mid T, X) = f(X) + \ex( g(X,T) \mid X, T) $$
+%
+%Within bins, all the $\hat{Y}$ within bins should be close to each other simply because we've used it as the score by which to stratify.  We can estimate $g_X(T)$ for each bin, too, using any method desired.
+%
+%$$\ex(Y \mid T) = \ex_X\left[ \ex(Y \mid T, X) \right] = \ex_X(f(X) + g(X,T) \mid T) = \ex_X(\hat{Y}) + g_{\hat{Y}}(T) $$
+%where we define $g_{\hat{Y}}(T) = \ex_X(g(X, T) \mid T)$, where the expectation is taken only over $X$ with observations falling in the bin defined by $\hat{Y}$.  The equation above implies that within small enough bins of $\hat{Y}$, the expected response is the mean predicted response plus the treatment effect, which is just a function of $T$ and not of $X$. \\
+%
+%Estimating $g_{\hat{Y}}(T)$ separately within bins allows for $g(X, T)$ to behave nonlinearly in the covariates.
+%
+%Examples:
+%\begin{enumerate}
+%\item $f(X) = a + bX$ and the treatment effect is a multiple of $\tau$ according to the treatment dose, independent of $X$: then $Y = a + bX + \tau T + \eps$
+%\item $f(X) = a + bX$ and the treatment effect is a multiple of $\tau$ according to the treatment dose interacted with $X$: then $Y = a + (b + \tau T)X + \eps$
+%\item For $X<5$, we are in case 1), and for $X\geq 5$ we are in case 2).  Then for bins of $\hat{Y}$ less than $a + 5b$, we estimate $g_{\hat{Y}}(T) = \tau T$ and for bins of $\hat{Y}$ greater than $a + 5b$, we estimate $g_{\hat{Y}}(T) = \tau X T$.  
+%\end{enumerate}
+
+
+\newpage
 \subsection{Fitting the model}
-What's the difference between fitting our model for matching using all units and fitting the model using controls only?
+What's the difference between fitting our model for matching using all units and fitting the model using controls only?  
+Let $\hat{Y}_{ctrl}$ and $\hat{\tau}_{ctrl}$ denote the predictions and the estimate, respectively, using only the controls in the training group, and let $\hat{Y}_{all}$ and $\hat{\tau}_{all}$ denote the predictions and the estimate, respectively, using all units.
+
+\subsubsection{Simple linear regression}
+Suppose we have a population of $N$ individuals.  Each individual has two potential outcomes, $Y_i(0)$ and $Y_i(1)$, their responses to the control and the treatment conditions, respectively.  Suppose without loss of generality that units $i=1,\dots, n$ receive the control condition and $i = n+1,\dots, N$ receive treatment, where $N = 2n$.  Suppose that there is a constant, additive treatment effect.  That is, for each individual, $Y_i(1) - Y_i(0) = \Delta$ for some $\Delta \in \reals$.  Let $\overline{c} = \frac{1}{N}\sum_{i=1}^N Y_i(0)$, $\overline{c}_c = \frac{1}{n}\sum_{i=1}^n Y_i(0)$, and $\overline{c}_t = \frac{1}{n}\sum_{i=n+1}^N Y_i(0)$.  Define $\overline{t}, \overline{t}_c$, and $\overline{t}_t$ analogously using $Y_i(1)$ in place of $Y_i(0)$.
+
+Suppose that we have no information on covariates.  Then our best guess using controls only is $\hat{Y}_{ctrl} = \overline{c}_c$ and our best guess using all units is $\hat{Y}_{all} = \overline{Y} = \overline{c} + \frac{\Delta}{2}$.  Since $\hat{Y}_{ctrl}$ and $\hat{Y}_{all}$ are constant for all units, then $\hat{\tau}_{ctrl} = \hat{\tau}_{all}$ and so using either prediction will give identical estimates and tests.
+
+Suppose now that we have information on one covariate.  Suppose that $Y_i(0) = c_i + X_i$, where $c_i$ is some baseline value and $X_i$ is the value of the covariate, and $X_i \independent c_i$ for all $i$.  Then $Y_i(1) = c_i+X_i + \Delta$.  Let $r_c$ denote the correlation between $X$ and $Y$ in the control group, $s_{Y_c}$ denote the standard deviation of the control outcomes, and $s_{X_c}$ denote the standard deviation of the covariate in the control group.  Similarly, let $r$, $s_Y$, and $s_X$ be the analogous quantities in the overall sample.  Using simple linear regression to predict the response without using treatment information, we have
+\begin{align*}
+\hat{Y}_{i, ctrl} &= \overline{c}_c + \overline{X}_c + r_c \frac{s_{Y_c}}{s_{X_c}}(X_i - \overline{X}_c) \\
+\hat{Y}_{i, all} &= \overline{c} + \overline{X} + r\frac{s_Y}{s_X}(X_i - \overline{X})
+\end{align*}
+
+
+Thus, the estimators are
+
+\begin{align}
+\hat{\tau}_{ctrl} &= \frac{1}{n}\sum_{i = n+1}^N (Y_i(1) - \hat{Y}_{i, ctrl}) - \frac{1}{n}\sum_{i=1}^n (Y_i(0) - \hat{Y}_{i, ctrl} ) \nonumber \\
+&=  \frac{1}{n}\sum_{i = n+1}^N (c_i + X_i + \Delta - \overline{c}_c - \overline{X}_c - r_c \frac{s_{Y_c}}{s_{X_c}}(X_i - \overline{X}_c)) - \frac{1}{n}\sum_{i=1}^n (c_i + X_i - \overline{c}_c - \overline{X}_c - r_c \frac{s_{Y_c}}{s_{X_c}}(X_i - \overline{X}_c))  \nonumber \\
+&= \Delta+  \frac{1}{n}\sum_{i = n+1}^N (c_i + X_i - r_c \frac{s_{Y_c}}{s_{X_c}}(X_i - \overline{X}_c)) - \frac{1}{n}\sum_{i=1}^n (c_i + X_i - r_c \frac{s_{Y_c}}{s_{X_c}}(X_i - \overline{X}_c))  \nonumber \\
+&= \Delta + \overline{c}_t + \overline{X}_t - r_c \frac{s_{Y_c}}{s_{X_c}}(\overline{X}_t - \overline{X}_c) - \overline{c}_c - \overline{X}_c  \nonumber \\
+&= \Delta + (\overline{c}_t - \overline{c}_c) + (1 - r_c \frac{s_{Y_c}}{s_{X_c}})(\overline{X}_t - \overline{X}_c)
+\end{align}
+
+and similarly,
+
+\begin{equation}
+\hat{\tau}_{all} = \Delta + (\overline{c}_t - \overline{c}_c) + (1 - r\frac{s_{Y}}{s_{X}})(\overline{X}_t - \overline{X}_c)
+\end{equation}
+
+The two estimators look similar.  The first term in both is $\Delta$, the quantity we want to estimate.  The second term is the difference in mean baseline responses between the treatment and control groups.  The selection on observables assumption grants us that $c_i \independent T_i$, and therefore this term equals $0$ in expectation.  The third term includes the difference in mean covariates between the treatment and control groups.  If treatment assignment is random, this term also equals $0$ in expectation.  If treatment is correlated with $X$, then it may not be the case that $\ex(\overline{X}_t) = \ex(\overline{X}_c)$ and so the factor in front of this term matters. 
+
+In the first case, the multiplier is $1 - r_c\frac{s_{Y_c}}{s_{X_c}}$.  Let $\cov$ and $\var$ denote the sample (as opposed to population) covariance and variance.  Using definitions, we have
+
+$$r_c = \frac{\cov(X_c, Y_c)}{s_{X_c}s_{Y_c}} = \frac{\cov(X_c, X_c + C_c)}{s_{X_c}s_{Y_c}} = \frac{\var(X_c) + \cov(X_c, C_c)}{s_{X_c}s_{Y_c}}   = \frac{s_{X_c}}{s_{Y_c}} + \frac{\cov(X_c, C_c)}{s_{X_c}s_{Y_c}}$$
+
+Assuming that $X_i \independent c_i$, the second term will equal $0$ in expectation.  However, in any particular sample, there may be some correlation between $X$ and $c$, so the second term will be nonzero.  This implies that
+
+\textcolor{red}{This proof is incomplete -- how do we get that product of 0 mean things is mean 0?}
+$$\ex\left( (1 - r_c\frac{s_{Y_c}}{s_{X_c}})(\overline{X}_t - \overline{X}_c) \right) = \ex\left( \left(1 - 1 + \frac{\cov(X_c, C_c)}{\var(X_c)}\right)(\overline{X}_t - \overline{X}_c) \right) = 0$$
+
+This shows that $\hat{\tau}_{ctrl}$ is an unbiased estimate of $\Delta$.  On the other hand,
+
+\begin{align*}
+r &= \frac{\cov(X, Y)}{s_{X}s_{Y}} = \frac{\cov(X, X + C + \Delta T)}{s_{X}s_{Y}} = \frac{\var(X) + \cov(X, C) + \Delta\cov(X, T)}{s_{X}s_{Y}} \\
+&= \frac{s_{X}}{s_{Y}} + \frac{\cov(X, C)}{s_{X}s_{Y}} + \Delta\frac{\cov(X, T)}{s_{X}s_{Y}}
+\end{align*}
+
+As above, the second term will drop out in expectation. However, the third will not unless $X \independent T$.  This implies
+$$\ex\left( 1 - r\frac{s_{Y}}{s_{X}} \right) = \Delta \frac{\cov(X, T)}{\var{X}} $$
+\textcolor{red}{but what we're really worried about is $\ex((1- r\frac{s_{Y}}{s_{X}})(\overline{X}_t - \overline{X}_c))$}
+
+Thus, $\hat{\tau}_{all}$ is a biased estimator of $\Delta$.  This simple example illustrates why when doing estimation, we want to fit our predictive model $\hat{Y} = f(X_1, \dots, X_p)$ using the controls only.  If we use all of the observations, then we capture some of the effect of the predictors which are correlated with treatment assignment.
+
+\subsubsection{Multivariate regression}
 Define $X_c$ and $Y_c$ to be the design matrix and responses for controls.  
 Let $X_t$ and $Y_t$ be defined analogously for the treatment group.
 Then, let $X$ and $Y$ be the design matrix and responses for all observations:
@@ -229,59 +362,6 @@ If treatment assignment is independent of the covariates, then the first term wi
 
 
 \newpage
-\subsection{MM for Testing}
-
-
-\subsection{MM for Estimation}
-\subsubsection{MM Estimate when $T$ is Binary}
-Recall that
-
-$$ATE = \ex(Y_1 -Y_0 )$$
-
-Let $\hat{Y} = f(X_1, \dots, X_p)$ be a prediction of the response using no information on the treatment.
-
-
-\begin{align*}
-\tau &= \ex( \hat{Y} - Y_1 \mid T=1 ) - \ex( \hat{Y} - Y_0 \mid T=0) \\
-&= \ex\left[  \ex( \hat{Y} \mid T=1, X) - \ex(Y_1 \mid T=1, X) - \ex( \hat{Y} \mid T=0, X) + \ex( Y_0 \mid T=0, X) \right] \\
-&= \ex\left[  \ex( \hat{Y} \mid X) - \ex(Y_1 \mid T=1, X) - \ex( \hat{Y} \mid X) + \ex( Y_0 \mid T=0, X) \right] \tag*{by conditional independence, $\hat{Y} \independent T \mid X$} \\
-&= \ex\left[ - \ex(Y_1 \mid T=1, X) + \ex( Y_0 \mid T=0, X) \right] 
-\end{align*}
-
-If selection on observables holds, i.e. you are so lucky to have accounted for all confounders $X$ so that $(Y_0, Y_1) \independent T \mid X$, then
-
-\begin{align*}
-\tau &= \ex\left[ - \ex(Y_1 \mid T=1, X) + \ex( Y_0 \mid T=0, X) \right] \\
-&= \ex\left[ -\ex(Y_1 \mid X) + \ex(Y_0 \mid X)\right] \\
-&= -ATE
-\end{align*}
-
-We estimate $\tau$ by $\hat{\tau}$:
-
-$$\hat{\tau} = \frac{1}{N_S} \sum_{s=1}^{N_S} \left( \frac{1}{n_{st}} \sum_{i: T=1, S=s} (\hat{Y}_i - Y_i) - \frac{1}{n_{sc}} \sum_{i: T=0, S=s} (\hat{Y}_i - Y_i)\right)$$
-
-\subsubsection{When $T$ is discrete}
-We can generalize the previous result when there are more than two treatments.
-
-%\subsubsection{When $T$ is continuous}
-%Suppose we estimate $\hat{Y} = f(X)$ and bin observations according to their predicted $\hat{Y}$.  Then within bins, we can estimate $\ex(Y \mid T)$.  Suppose that $Y = f(X) + g(X, T) + \eps(X)$, where $\eps(X) \independent T$, $\ex(\eps(X) \mid X) = 0$, and the $\eps(X)$ are uncorrelated.  If we assume this linear relationship, we obtain a generalized additive model:
-%
-%$$\ex(Y \mid T, X) = \ex( f(X) + g(X, T) + \eps(X) \mid T, X) = f(X) + \ex( g(X,T) \mid X, T) $$
-%
-%Within bins, all the $\hat{Y}$ within bins should be close to each other simply because we've used it as the score by which to stratify.  We can estimate $g_X(T)$ for each bin, too, using any method desired.
-%
-%$$\ex(Y \mid T) = \ex_X\left[ \ex(Y \mid T, X) \right] = \ex_X(f(X) + g(X,T) \mid T) = \ex_X(\hat{Y}) + g_{\hat{Y}}(T) $$
-%where we define $g_{\hat{Y}}(T) = \ex_X(g(X, T) \mid T)$, where the expectation is taken only over $X$ with observations falling in the bin defined by $\hat{Y}$.  The equation above implies that within small enough bins of $\hat{Y}$, the expected response is the mean predicted response plus the treatment effect, which is just a function of $T$ and not of $X$. \\
-%
-%Estimating $g_{\hat{Y}}(T)$ separately within bins allows for $g(X, T)$ to behave nonlinearly in the covariates.
-%
-%Examples:
-%\begin{enumerate}
-%\item $f(X) = a + bX$ and the treatment effect is a multiple of $\tau$ according to the treatment dose, independent of $X$: then $Y = a + bX + \tau T + \eps$
-%\item $f(X) = a + bX$ and the treatment effect is a multiple of $\tau$ according to the treatment dose interacted with $X$: then $Y = a + (b + \tau T)X + \eps$
-%\item For $X<5$, we are in case 1), and for $X\geq 5$ we are in case 2).  Then for bins of $\hat{Y}$ less than $a + 5b$, we estimate $g_{\hat{Y}}(T) = \tau T$ and for bins of $\hat{Y}$ greater than $a + 5b$, we estimate $g_{\hat{Y}}(T) = \tau X T$.  
-%\end{enumerate}
-
 \section{Empirical results}
 
 
