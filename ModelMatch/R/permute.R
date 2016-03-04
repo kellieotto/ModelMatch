@@ -135,6 +135,37 @@ permu_test_mean <- function(strata, prediction, treatment, response, iters=1000,
 
 
 
+#' Test for the difference in means within groups, refitting the model at each permutation
+#'
+#' Carry out stratified permutation test for difference in mean residuals between the treatment and control groups.
+#' @inheritParams permu_test_mean
+#' @param fit_function Function that takes arguments covariates and responses on which to fit the prediction model and returns that model object
+#' example: fit_function = function(X, Y) lm(Y~., data.frame(X, Y))
+#' @return a list containing the results: attributes diff_means (the estimated difference), perm_distribution (simulated permutation distribution), and pvalue (p-value for the test)
+permu_test_mean_refit <- function(strata, fit_function, X, response, iters=1000, shift = 0){
+  GG <- length(strata)
+  if(length(response) == 1){response <- rep(response, length(treatment))}
+
+  tmp <- do.call(rbind, strata)
+  treatment <- tmp[order(tmp[,"index"]),"treatment"]
+  prediction <- predict(fit_function(X[treatment == 0, ], response[treatment == 0]), X)
+  truth <- sum(abs(within_group_mean_cpp(strata, prediction, response)))/GG
+  response_shift <- response - shift*treatment
+  perm_groups <- strata
+  perm_dist <- replicate(iters, {
+    perm_groups <- permute_within_groups_cpp(perm_groups)
+    perm_groups_df <- do.call(rbind, perm_groups)
+    treatment <- perm_groups_df[order(perm_groups_df[,"index"]),"treatment"]
+    prediction <- predict(fit_function(X[treatment == 0, ], response[treatment == 0]), X)
+    sum(abs(within_group_mean_cpp(perm_groups, prediction, response_shift, shift = shift)))
+  })/GG
+  pval <- c("p_upper" = sum(perm_dist >= truth)/iters,
+            "p_lower" = sum(perm_dist <= truth)/iters)
+  pval <- c(pval, "twosided" = min(1, 2*min(pval)))
+  return(list("diff_means"=truth, "perm_distribution"=perm_dist, "pvalue"=pval))
+}
+
+
 #' Confidence interval for the difference in means within groups
 #'
 #' Invert the stratified permutation test to get a \eqn{1-\alpha} confidence interval for the difference in mean residuals
