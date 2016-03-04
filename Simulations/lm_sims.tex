@@ -140,8 +140,6 @@ MM Pairs & 0.287 & 0.291 & 0.296 & 0.296 \\
 \end{table}
 
 
-
-% Why doesn't this one work?
 \begin{knitrout}
 \definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}
 
@@ -310,7 +308,6 @@ MM Pairs & 0.372 & 0.386 & 0.378 & 0.380 \\
 
 
 \end{knitrout}
-
 % latex table generated in R 3.2.0 by xtable 1.8-0 package
 % Sat Feb  6 18:51:47 2016
 \begin{table}[ht]
@@ -333,6 +330,10 @@ MM Pairs & 0.402 & 0.411 & 0.397 & 0.398 \\
 
 
 \section{Comparing Variants of Model-based Matching}
+One consideration is how we fit the model: should we fit it to controls only, fit it to all individuals, or something else?
+
+First, consider estimation.  From the three simulations below, it's clear that fitting to all individuals introduces bias in the estimate when treatment assignment is correlated with $X$.  We ought to fit to controls only.
+
 
 
 \begin{knitrout}
@@ -386,7 +387,6 @@ MM Pairs & -0.008 & -0.026 & -0.017 & -0.109 \\
 \end{table}
 
 
-
 \begin{knitrout}
 \definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}
 
@@ -397,7 +397,6 @@ MM Pairs & -0.008 & -0.026 & -0.017 & -0.109 \\
 
 
 \end{knitrout}
-
 % latex table generated in R 3.2.0 by xtable 1.8-0 package
 % Thu Feb 11 10:59:34 2016
 \begin{table}[ht]
@@ -448,7 +447,6 @@ MM Pairs & 0.016 & -0.015 & -0.119 & -1.185 \\
 
 
 \end{knitrout}
-
 % latex table generated in R 3.2.0 by xtable 1.8-0 package
 % Thu Feb 11 10:59:34 2016
 \begin{table}[ht]
@@ -489,10 +487,52 @@ MM Pairs & -0.014 & -0.042 & -0.304 & -3.186 \\
 \end{table}
 
 
-\section{Hypothesis Testing}
-We compare the power of stratified permutation tests using model-based matching with different numbers of strata to the t-test from OLS.
 
-We've uncovered an interesting problem: if we use estimates $\hat{Y}$ based on the controls only, we get anti-conservative tests.  The actual level of our permutation tests is much higher than the nominal level.
+Next, consider testing.  We fix the number of strata at $5$ according to quintiles of $\hat{Y}$.  We try several different methods: fitting $\hat{Y}$ to controls only and stratifying on it, fitting a regularized model to controls only and stratifying on the predictions, fitting $\hat{Y}$ to treated only and stratifying on it, fitting $\hat{Y}$ to all units and stratifying on it, fitting to treated and controls and using the average of the two predictions as our $\hat{Y}$ and our stratifying score, using this combined residual but stratifying based on the control prediction only, and stratifying on observed $Y$ and refitting the model to controls at each permutation.
+
+It appears that only two methods have the correct level: fitting a regularized model to controls and fitting to all observations. We've uncovered an interesting problem: if we our model to get $\hat{Y}$ systematically overfits to one group, we get anti-conservative tests.  The actual level of our permutation tests is much higher than the nominal level.
+
+Thus, we must be clear about whether our goal is testing or estimation.
+
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}
+
+{\centering \includegraphics[width=\maxwidth]{figure/mmcomp4-1} 
+
+}
+
+
+
+\end{knitrout}
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}
+
+{\centering \includegraphics[width=\maxwidth]{figure/mmcomp5-1} 
+
+}
+
+
+
+\end{knitrout}
+
+
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}
+
+{\centering \includegraphics[width=\maxwidth]{figure/mmcomp6-1} 
+
+}
+
+
+
+\end{knitrout}
+
+\section{Hypothesis Testing}
+We compare the power of stratified permutation tests using model-based matching with different numbers of strata to the t-test from OLS and the Wilcoxon rank sum test.
+
 
 
 
