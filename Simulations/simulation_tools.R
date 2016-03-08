@@ -142,7 +142,7 @@ simulate_estimation_vary_mm <- function(gamma, B, N, selection = "random", nu = 
   # N         = number of individuals in the sample
   # B         = number of replications
   # selection = treatment assignment mechanism. Default is "random".
-  #             Options: "random", "correlated", "misspecified pscore"
+  #             Options: "random", "correlated", "perfectly correlated", "misspecified pscore"
   # nu        = covariance between treatment and X1 if selection == "correlated" or "misspecified pscore". Default 0.5
   # errors    = type of errors in the response model. Default is "normal".
   #             Options: "normal" (N(0,1)), "heteroskedastic" (N(0, abs(X2))), "heavy" (Laplacian(0,1))
@@ -155,8 +155,8 @@ simulate_estimation_vary_mm <- function(gamma, B, N, selection = "random", nu = 
   # Compare model-based matching, propensity score matching, t-test, and max entropy balancing
 
   # estimate: mean(treated) - mean(control)
-  estimate <- matrix(NA, nrow = B*length(gamma), ncol = 6)
-  colnames(estimate) <- c("MM Pairs", "MM Strata", "MM Unstratified", "MM Pairs (ctrls)", "MM Strata (ctrls)", "MM Unstratified (ctrls)")
+  estimate <- matrix(NA, nrow = B*length(gamma), ncol = 7)
+  colnames(estimate) <- c("Pairs", "5 Strata", "Unstratified", "Pairs (ctrls)", "5 Strata (ctrls)", "Unstratified (ctrls)", "Unstratified (ctrls, regularized)")
   estimate <- cbind(estimate, "Gamma" = rep(gamma, each = B))
   rownum <- 0
 
@@ -190,11 +190,15 @@ simulate_estimation_vary_mm <- function(gamma, B, N, selection = "random", nu = 
           # T = nu*X_1 + delta, so cov(T, X_1) = nu*var(X_1)
           tr <- 1*((nu*X1 + rnorm(N)) >= 0)
         }else{
-          if(selection == "misspecified pscore"){
-            # T = nu*X_1 + X_1*X_2 + delta, so cov(T, X_1) = nu*var(X_1) still
-            tr <- 1*((nu*X1 + X1*X2 + rnorm(N)) >= 0)
+          if(selection == "perfectly correlated"){
+            tr <- 1*(X1 >= 0)
           }else{
-            stop("Invalid selection input")
+            if(selection == "misspecified pscore"){
+            # T = nu*X_1 + X_1*X_2 + delta, so cov(T, X_1) = nu*var(X_1) still
+              tr <- 1*((nu*X1 + X1*X2 + rnorm(N)) >= 0)
+            }else{
+              stop("Invalid selection input")
+          }
           }
         }
       }
@@ -206,6 +210,8 @@ simulate_estimation_vary_mm <- function(gamma, B, N, selection = "random", nu = 
       # Estimate Yhat using controls
       mm_model_ctrls <- lm(Y~X1+X2, dat, subset = (tr==0))
       Yhat_ctrls <- predict(mm_model_ctrls, dat)
+      mm_model_ctrls <- lm.ridge(Y~X1+X2, data = dat, lambda = 2)
+      Yhat_ctrls_reg <- scale(dat[,2:3],center = mm_model_ctrls$xm, scale = mm_model_ctrls$scales) %*% mm_model_ctrls$coef + mm_model_ctrls$ym
 
       # Estimate Yhat using all observations
       mm_model_all <- lm(Y~X1+X2, dat)
@@ -218,16 +224,19 @@ simulate_estimation_vary_mm <- function(gamma, B, N, selection = "random", nu = 
       mm_strata_all <- Strata(treatment = tr, prediction = Yhat_all, strata = 5)
       mm_unstr_ctrls <- Strata(treatment = tr, prediction = Yhat_ctrls, strata = 1)
       mm_unstr_all <- Strata(treatment = tr, prediction = Yhat_all, strata = 1)
+      mm_unstr_reg <- Strata(treatment = tr, prediction = Yhat_ctrls_reg, strata = 1)
 
       # Estimates
-      estimate[rownum, "MM Pairs"] <- compute_diffmeans(mm_matches_all, Y-Yhat_all)
-      estimate[rownum, "MM Strata"] <- compute_diffmeans(mm_strata_all, Y-Yhat_all)
+      estimate[rownum, "Pairs"] <- compute_diffmeans(mm_matches_all, Y-Yhat_all)
+      estimate[rownum, "5 Strata"] <- compute_diffmeans(mm_strata_all, Y-Yhat_all)
 
-      estimate[rownum, "MM Pairs (ctrls)"] <- compute_diffmeans(mm_matches_ctrls, Y-Yhat_ctrls)
-      estimate[rownum, "MM Strata (ctrls)"] <- compute_diffmeans(mm_strata_ctrls, Y-Yhat_ctrls)
+      estimate[rownum, "Pairs (ctrls)"] <- compute_diffmeans(mm_matches_ctrls, Y-Yhat_ctrls)
+      estimate[rownum, "5 Strata (ctrls)"] <- compute_diffmeans(mm_strata_ctrls, Y-Yhat_ctrls)
 
-      estimate[rownum, "MM Unstratified"] <- compute_diffmeans(mm_unstr_all, Y-Yhat_all)
-      estimate[rownum, "MM Unstratified (ctrls)"] <- compute_diffmeans(mm_unstr_ctrls, Y-Yhat_ctrls)
+      estimate[rownum, "Unstratified"] <- compute_diffmeans(mm_unstr_all, Y-Yhat_all)
+      estimate[rownum, "Unstratified (ctrls)"] <- compute_diffmeans(mm_unstr_ctrls, Y-Yhat_ctrls)
+      estimate[rownum, "Unstratified (ctrls, regularized)"] <- compute_diffmeans(mm_unstr_reg, Y-Yhat_ctrls_reg)
+
     }
   }
   return(as.data.frame(estimate))
@@ -240,7 +249,7 @@ simulate_tests <- function(gamma, B, N, selection = "random", nu = 0.5, errors =
   # N         = number of individuals in the sample
   # B         = number of replications
   # selection = treatment assignment mechanism. Default is "random".
-  #             Options: "random", "correlated", "misspecified pscore"
+  #             Options: "random", "correlated", "perfectly correlated", "misspecified pscore"
   # nu        = covariance between treatment and X1 if selection == "correlated" or "misspecified pscore". Default 0.5
   # errors    = type of errors in the response model. Default is "normal".
   #             Options: "normal" (N(0,1)), "heteroskedastic" (N(0, abs(X2))), "heavy" (Laplacian(0,1))
@@ -287,11 +296,15 @@ simulate_tests <- function(gamma, B, N, selection = "random", nu = 0.5, errors =
           # T = nu*X_1 + delta, so cov(T, X_1) = nu*var(X_1)
           tr <- 1*((nu*X1 + rnorm(N)) >= 0)
         }else{
-          if(selection == "misspecified pscore"){
-            # T = nu*X_1 + X_1*X_2 + delta, so cov(T, X_1) = nu*var(X_1) still
-            tr <- 1*((nu*X1 + X1*X2 + rnorm(N)) >= 0)
+          if(selection == "perfectly correlated"){
+            tr <- 1*(X1 >= 0)
           }else{
-            stop("Invalid selection input")
+            if(selection == "misspecified pscore"){
+              # T = nu*X_1 + X_1*X_2 + delta, so cov(T, X_1) = nu*var(X_1) still
+              tr <- 1*((nu*X1 + X1*X2 + rnorm(N)) >= 0)
+            }else{
+              stop("Invalid selection input")
+            }
           }
         }
       }
@@ -427,7 +440,8 @@ simulate_tests_nonconstant <- function(gamma, B, N, selection = "random", nu = 0
 }
 
 
-simulate_tests_which_residuals <- function(gamma, B, N, selection = "random", nu = 0.5, errors = "normal"){
+simulate_tests_which_residuals <- function(gamma, B, N, selection = "random", nu = 0.5, errors = "normal",
+                                           refit_method = TRUE){
   # Run simulations, varying which model the residuals come from
   # gamma     = the (constant additive) treatment effect
   # N         = number of individuals in the sample
@@ -437,6 +451,7 @@ simulate_tests_which_residuals <- function(gamma, B, N, selection = "random", nu
   # nu        = covariance between treatment and X1 if selection == "correlated" or "misspecified pscore". Default 0.5
   # errors    = type of errors in the response model. Default is "normal".
   #             Options: "normal" (N(0,1)), "heteroskedastic" (N(0, abs(X2))), "heavy" (Laplacian(0,1))
+  # refit_method = flag whether or not to run the method of refitting to controls at each permutation
 
   beta0 <- 1
   beta1 <- 2
@@ -445,10 +460,10 @@ simulate_tests_which_residuals <- function(gamma, B, N, selection = "random", nu
   # Compare model-based matching, t-test after OLS, and randomization without controlling for covariates
 
   # power: number of times pvalue < 0.05
-  pvalue <- matrix(NA, nrow = B*length(gamma), ncol = 7)
+  pvalue <- matrix(NA, nrow = B*length(gamma), ncol = 6)
   colnames(pvalue) <- c("MM fit to controls", "MM fit to controls, regularized",
                         "MM fit to treated","MM fit to all",
-                        "MM with combined residuals", "MM with combined res and strat by ctrl",
+                        "MM with combined residuals",
                         "Match on Y, refit Yhat each permutation")
   pvalue <- cbind(pvalue, "Gamma" = rep(gamma, each = B))
   rownum <- 0
@@ -530,31 +545,37 @@ simulate_tests_which_residuals <- function(gamma, B, N, selection = "random", nu
                                       response = Y)
       mm_addresiduals_test <- permu_test_mean(strata = mm_strata_addresiduals, prediction = (Yhat_ctrls + Yhat_tr)/2,
                                               treatment = tr, response = Y)
-      mm_addresiduals_ctrlstrat_test <- permu_test_mean(strata = mm_strata_ctrls, prediction = (Yhat_ctrls + Yhat_tr)/2,
-                                              treatment = tr, response = Y)
-      mm_refit <- permu_test_mean_refit(strata = mm_strata_Y, response = Y, X = data.frame(X1, X2),
-                                        fit_function = function(X, Y) lm(Y~., data.frame(X, Y)))
 
+      if(refit_method == TRUE){
+        mm_refit <- permu_test_mean_refit(strata = mm_strata_Y, response = Y, X = data.frame(X1, X2),
+                                        fit_function = function(X, Y) lm(Y~., data.frame(X, Y)))
+        pvalue[rownum, "Match on Y, refit Yhat each permutation"] <- mm_refit$pvalue["p_upper"]
+      } else {
+        pvalue[rownum, "Match on Y, refit Yhat each permutation"] <- NA
+      }
       # Estimates
       pvalue[rownum, "MM fit to controls"] <- mm_ctrl_test$pvalue["p_upper"]
       pvalue[rownum, "MM fit to controls, regularized"] <- mm_ctrl_reg_test$pvalue["p_upper"]
       pvalue[rownum, "MM fit to treated"] <- mm_tr_test$pvalue["p_upper"]
       pvalue[rownum, "MM fit to all"] <- mm_all_test$pvalue["p_upper"]
       pvalue[rownum, "MM with combined residuals"] <- mm_addresiduals_test$pvalue["p_upper"]
-      pvalue[rownum, "MM with combined res and strat by ctrl"] <- mm_addresiduals_ctrlstrat_test$pvalue["p_upper"]
-      pvalue[rownum, "Match on Y, refit Yhat each permutation"] <- mm_refit$pvalue["p_upper"]
     }
   }
   return(as.data.frame(pvalue))
 }
 ### Plots
 
-plot_est_by_gamma <- function(estimates, color_mm = FALSE){
+plot_est_by_gamma <- function(estimates, color_mm = FALSE, fill_by_fitmethod = FALSE){
   # Input ``estimates'' should be the output of simulate_estimation
   res_plot <- melt(estimates, id.vars = "Gamma")
   res_plot$color_mm = rep("black", nrow(res_plot))
   if(color_mm == TRUE){
-    res_plot$color_mm[grepl("MM", res_plot$variable)] <- "red"
+    res_plot$color_mm[grepl("MM", res_plot$variable)] <- "#629e1f"
+  }
+  if(fill_by_fitmethod == TRUE){
+    res_plot$color_mm <- "#DB7093"
+    res_plot$color_mm[grepl("ctrls", res_plot$variable)] <- "#629e1f"
+    res_plot$color_mm[grepl("regularized", res_plot$variable)] <- "black"
   }
   p <- ggplot(res_plot, aes(x = variable, y = value)) +
     geom_boxplot(aes(fill = color_mm), alpha = 0.25) +
@@ -562,7 +583,7 @@ plot_est_by_gamma <- function(estimates, color_mm = FALSE){
     geom_hline(aes(yintercept = Gamma), linetype = "dashed") +
     xlab("Estimation Method") +
     ylab("Estimate") +
-    scale_fill_manual(c("black", "red"), values=c("black", "red"), guide = FALSE)
+    scale_fill_manual(c("black", "#629e1f", "#DB7093"), values=c("black", "#629e1f", "#DB7093"), guide = FALSE)
 }
 
 plot_power_curves <- function(pvalues){
@@ -575,8 +596,9 @@ plot_power_curves <- function(pvalues){
   power_curves <- do.call(rbind, power_curves)
   power_curves <- as.data.frame(cbind(power_curves,
                                       "alpha" = rep((0:99)/100, length(gamma)),
-                                      "gamma" = rep(gamma, each = 100)
-                                      ))
+                                      "gamma" = rep(unique(as.character(pvalues$Gamma)), each = 100)
+                                ))
+  power_curves$gamma <- factor(power_curves$gamma, levels = unique(as.character(pvalues$Gamma)))
   power_curves[,"MM (2 Strata)"] <- as.numeric(as.character(power_curves[,"MM (2 Strata)"]))
   power_curves[,"MM (5 Strata)"] <- as.numeric(as.character(power_curves[,"MM (5 Strata)"]))
   power_curves[,"Wilcoxon"]      <- as.numeric(as.character(power_curves[,"Wilcoxon"]))
@@ -594,8 +616,13 @@ plot_power_curves <- function(pvalues){
 plot_power_curves_which_residuals <- function(pvalues){
   # Input ``pvalues'' should be the output of simulate_tests
   gamma <- unique(pvalues[,"Gamma"])
+  refit_ind <- which(colnames(pvalues) == "Match on Y, refit Yhat each permutation")
+  if(all(is.na(pvalues[, refit_ind]))){
+    pvalues <- pvalues[,-refit_ind]
+  }
+  vv <- ncol(pvalues)
   power_curves <- lapply(gamma, function(g){
-    gamma_subset <- pvalues[pvalues$Gamma == g, -8]
+    gamma_subset <- pvalues[pvalues$Gamma == g, -vv]
     apply(gamma_subset, 2, compute_power)
   })
   power_curves <- do.call(rbind, power_curves)
@@ -608,9 +635,10 @@ plot_power_curves_which_residuals <- function(pvalues){
   power_curves[,"MM fit to treated"] <- as.numeric(as.character(power_curves[,"MM fit to treated"]))
   power_curves[,"MM fit to all"]      <- as.numeric(as.character(power_curves[,"MM fit to all"]))
   power_curves[,"MM with combined residuals"] <- as.numeric(as.character(power_curves[,"MM with combined residuals"]))
-  power_curves[,"MM with combined res and strat by ctrl"] <- as.numeric(as.character(power_curves[,"MM with combined res and strat by ctrl"]))
-  power_curves[,"Match on Y, refit Yhat each permutation"] <- as.numeric(as.character(power_curves[,"Match on Y, refit Yhat each permutation"]))
-
+#  power_curves[,"MM with combined res and strat by ctrl"] <- as.numeric(as.character(power_curves[,"MM with combined res and strat by ctrl"]))
+  if("Match on Y, refit Yhat each permutation" %in% colnames(power_curves)){
+    power_curves[,"Match on Y, refit Yhat each permutation"] <- as.numeric(as.character(power_curves[,"Match on Y, refit Yhat each permutation"]))
+  }
   power_curves[,"alpha"]         <- as.numeric(as.character(power_curves[,"alpha"]))
   power_curves_plot <- melt(power_curves, id.vars = c("alpha", "gamma"),
                             variable.name = "Method")
