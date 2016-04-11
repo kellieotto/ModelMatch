@@ -22,6 +22,8 @@
 %\floatsetup[table]{capposition=top}
 %\floatsetup[figure]{capposition=top}
 
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
 
 \newcommand{\beq}{\begin{equation}}
 \newcommand{\eeq}{\end{equation}}
@@ -90,7 +92,10 @@ A standard assumption is exogeneity, or conditional independence:  $(Y(0), Y(1))
 
 
 
-\section{Matching}
+
+\section{Estimation}
+
+\subsection{Matching}
 % Do a long lit review of matching here
 
 In randomized control trials, the potential outcomes are balanced between treatment and control groups by construction: in other words, $(Y(0), Y(1)) \independent T$.
@@ -106,28 +111,18 @@ When the propensity score estimates are wrong, then estimates of the average tre
 We'd like to try to achieve balance in the potential outcomes some other way:
 $(Y(0), Y(1)) \independent T \mid \hat{Y}$, where $\hat{Y}$ is the model-based prediction of $Y$, absent knowledge of the treatment,  for all units.
 
-\section{Tests of Residuals}
-Tests of residuals after covariance adjustment appear in various forms in the literature.
-Rosenbaum (2002) uses residuals after fitting prediction models to stabilize estimates of treatment effects for more powerful randomization tests.
-Rosenbaum's framework is limited to the case of binary treatment, where individuals are either assigned to treatment or receive the control.
+\subsection{Estimation in randomized experiments}
 
-Shah and Bühlmann (2015) use residuals to test for the goodness of fit of high-dimensional linear models by testing for nonlinear signals in the residuals. %http://www.statslab.cam.ac.uk/~rds37/papers/RPtests
-
-
-\newpage
-\section{Theory}
-\subsection{MM for Testing}
-
-
-\subsection{MM for Estimation}
 Recall that
 
 $$ATE = \ex(Y_1 -Y_0 )$$
 
-Let $\hat{Y} = f(X_1, \dots, X_p)$ be a prediction of the response, using the control group the training data.
-The prediction uses no information on the treatment -- it gives our best guess at the response one would have under the control condition.
-Suppose that we stratify the observations according to their values of $\hat{Y}$ to obtain $S$ strata.
-The $s$th stratum contains $n_{st}$ treated individuals and $n_{sc}$ control individuals for a total of $N_s = n_{st}+n_{sc}$ individuals, so $N = N_1 + \dots + N_S$.
+Let $\hat{Y} = f(X)$ be a prediction of the response under the control regime. \todo{ mention fitting f problem}
+The prediction uses no information on the treatment.
+
+
+%Suppose that we stratify the observations according to their values of $\hat{Y}$ to obtain $S$ strata.
+%The $s$th stratum contains $n_{st}$ treated individuals and $n_{sc}$ control individuals for a total of $N_s = n_{st}+n_{sc}$ individuals, so $N = N_1 + \dots + N_S$.
 We estimate the ATE using $\hat{\tau}$:
 
 $$\hat{\tau} =  \sum_{s=1}^{S} \frac{N_S}{N}\left( \frac{1}{n_{st}} \sum_{i: T_i=1, S_i=s} (Y_i - \hat{Y}_i) - \frac{1}{n_{sc}} \sum_{i: T_i=0, S_i=s} (Y_i - \hat{Y}_i)\right)$$
@@ -150,73 +145,189 @@ Is it the case that $\ex(T_i \mid X) = \ex(T_i \mid x_i) = \ex(T_i \mid \hat{Y}_
 In that case, given $\hat{Y}_i$, we know which stratum $i$ belongs to}
 
 
+\subsubsection{Variance}
+Assume that we sample $N$ units from a super population and do a complete randomization with $N_t$ units assigned to treatment.  Define $\sigma_1^2 = \var_{SP}(Y(1))$, $\sigma_0^2 = \var_{SP}(Y(0))$, and $\sigma_{01}^2 = \var_{SP}(Y(1) - Y(0)) = \cov_{SP}(Y(1), Y(0))$.  
 
-%
-%\begin{align*}
-%\tau &= \ex( \hat{Y} - Y_1 \mid T=1 ) - \ex( \hat{Y} - Y_0 \mid T=0) \\
-%&= \ex\left[  \ex( \hat{Y} \mid T=1, X) - \ex(Y_1 \mid T=1, X) - \ex( \hat{Y} \mid T=0, X) + \ex( Y_0 \mid T=0, X) \right] \\
-%&= \ex\left[  \ex( \hat{Y} \mid X) - \ex(Y_1 \mid T=1, X) - \ex( \hat{Y} \mid X) + \ex( Y_0 \mid T=0, X) \right] \tag*{by conditional independence, $\hat{Y} \independent T \mid X$} \\
-%&= \ex\left[ - \ex(Y_1 \mid T=1, X) + \ex( Y_0 \mid T=0, X) \right] 
-%\end{align*}
-%
-%If selection on observables holds, i.e. you are so lucky to have accounted for all confounders $X$ so that $(Y_0, Y_1) \independent T \mid X$, then
-%
-%\begin{align*}
-%\tau &= \ex\left[ - \ex(Y_1 \mid T=1, X) + \ex( Y_0 \mid T=0, X) \right] \\
-%&= \ex\left[ -\ex(Y_1 \mid X) + \ex(Y_0 \mid X)\right] \\
-%&= -ATE
-%\end{align*}
-%
+Define $r_i = Y_i - \hat{Y}_i$ to be the observed residualized outcome in the sample.  We rewrite the estimator as
+
+$$\hat{\tau}^{adj} = \overline{r_t} - \overline{r_c}$$
+
+where $\overline{r_t}$ and $\overline{r_c}$ are the average residualized outcomes in the treatment and control groups, respectively.  The residualized potential outcomes are then defined as $r_i(1) = Y_i(1) - \hat{Y}_i$ and $r_i(0) = Y_i(0) - \hat{Y}_i$.  Let $\overline{r_i(1)}$ and $\overline{r_i(0)}$ be the average residualized potential outcomes in the sample and $\overline{R_i(1)}$ and $\overline{R_i(0)}$ be the analogous population quantities: that is, $\ex_{SP}(r_i(1)) = \overline{R_i(1)}$ and $\ex_{SP}(r_i(0)) = \overline{R_i(0)}$.
 
 
-%\subsubsection{When $T$ is discrete}
-%We can generalize the previous result when there are more than two treatments.
+\begin{align*}
+\var(\hat{\tau}^{adj}) &= \var\left( \overline{r_t} - \overline{r_c} \right) \\
+&= \ex\left[ \left(  \overline{r_t} - \overline{r_c} - \ex_{SP}\left[ r(1) - r(0) \right] \right)^2 \right] \\
+&= \ex\left[ \left(  \overline{r_t} - \overline{r_c} - \left(\overline{r(1)} - \overline{r(0)}\right) + \left(\overline{r(1)} - \overline{r(0)}\right) -  \ex_{SP}\left[ r(1) - r(0) \right] \right)^2 \right] \\
+&= \ex\left[  \left(  \overline{r_t} - \overline{r_c} - \left(\overline{r(1)} - \overline{r(0)}\right) \right)^2\right] + \ex\left[ \left( \left(\overline{r(1)} - \overline{r(0)}\right) -  \ex_{SP}\left[ r(1) - r(0) \right] \right)^2 \right] \\
+&\qquad\qquad + 2 \ex\left[  \left(  \overline{r_t} - \overline{r_c} - (\overline{r(1)} - \overline{r(0)}) \right)\left( (\overline{r(1)} - \overline{r(0)}) -  \ex_{SP}\left[ r(1) - r(0) \right] \right) \right]
+\end{align*}
 
-%\subsubsection{When $T$ is continuous}
-%Suppose we estimate $\hat{Y} = f(X)$ and bin observations according to their predicted $\hat{Y}$.  Then within bins, we can estimate $\ex(Y \mid T)$.  Suppose that $Y = f(X) + g(X, T) + \eps(X)$, where $\eps(X) \independent T$, $\ex(\eps(X) \mid X) = 0$, and the $\eps(X)$ are uncorrelated.  If we assume this linear relationship, we obtain a generalized additive model:
-%
-%$$\ex(Y \mid T, X) = \ex( f(X) + g(X, T) + \eps(X) \mid T, X) = f(X) + \ex( g(X,T) \mid X, T) $$
-%
-%Within bins, all the $\hat{Y}$ within bins should be close to each other simply because we've used it as the score by which to stratify.  We can estimate $g_X(T)$ for each bin, too, using any method desired.
-%
-%$$\ex(Y \mid T) = \ex_X\left[ \ex(Y \mid T, X) \right] = \ex_X(f(X) + g(X,T) \mid T) = \ex_X(\hat{Y}) + g_{\hat{Y}}(T) $$
-%where we define $g_{\hat{Y}}(T) = \ex_X(g(X, T) \mid T)$, where the expectation is taken only over $X$ with observations falling in the bin defined by $\hat{Y}$.  The equation above implies that within small enough bins of $\hat{Y}$, the expected response is the mean predicted response plus the treatment effect, which is just a function of $T$ and not of $X$. \\
-%
-%Estimating $g_{\hat{Y}}(T)$ separately within bins allows for $g(X, T)$ to behave nonlinearly in the covariates.
-%
-%Examples:
-%\begin{enumerate}
-%\item $f(X) = a + bX$ and the treatment effect is a multiple of $\tau$ according to the treatment dose, independent of $X$: then $Y = a + bX + \tau T + \eps$
-%\item $f(X) = a + bX$ and the treatment effect is a multiple of $\tau$ according to the treatment dose interacted with $X$: then $Y = a + (b + \tau T)X + \eps$
-%\item For $X<5$, we are in case 1), and for $X\geq 5$ we are in case 2).  Then for bins of $\hat{Y}$ less than $a + 5b$, we estimate $g_{\hat{Y}}(T) = \tau T$ and for bins of $\hat{Y}$ greater than $a + 5b$, we estimate $g_{\hat{Y}}(T) = \tau X T$.  
-%\end{enumerate}
+Note that the expectations above are taken over both the random sampling from the superpopulation and the random assignment of treatments.  The third term is zero because, after conditioning on the observed $r_1(1), \dots, r_N(1), r_1(0), \dots, r_N(0)$, the expected value of the first factor is $0$. \\
+
+The first term simplifies to
+
+\begin{align*}
+\ex\left[  \left(  \overline{r_t} - \overline{r_c} - \left(\overline{r(1)} - \overline{r(0)}\right) \right)^2\right]  &= \ex\left[  \left(  (\overline{r_t} - \overline{r(1)} )- ( \overline{r_c} -  \overline{r(0)}) \right)^2\right] \\
+&= \ex\left[   (\overline{r_t} - \overline{r(1)} )^2 \right] +  \ex\left[ ( \overline{r_c} -  \overline{r(0)} )^2\right]  - 2 \ex\left[ (\overline{r_t} - \overline{r(1)} ) ( \overline{r_c} -  \overline{r(0)}) )\right] \\
+&= \frac{\var(r(1))}{N_t} + \frac{\var(r(0))}{N_c} - \frac{\var(r(1) - r(0))}{N}
+\end{align*}
+
+by finite sample results (\textcolor{red}{cite the imbens and rubin text}).  The second term is simply the variance of the difference in means of all potential outcomes.  Thus, by definition
+
+$$ \ex\left[ \left( (\overline{r(1)} - \overline{r(0)}) -  \ex_{SP}\left[ r(1) - r(0) \right] \right)^2 \right] = \frac{\var(r(1) - r(0))}{N}$$
+
+Combining the three terms gives
+
+\begin{equation}
+\var(\hat{\tau}^{adj}) =\frac{\var(r(1))}{N_t} + \frac{\var(r(0))}{N_c}
+\end{equation}
+
+In terms of known quantities:
+
+\begin{align*}
+\var(r(1)) &= \var(Y(1) - \hat{Y}) \\
+&= \var(Y(1)) + \var(\hat{Y}) - 2\cov(Y(1), \hat{Y}) \\
+&= \sigma_1^2 + \nu^2 - 2 \rho_1 \sigma_1 \nu
+\end{align*}
+
+where $\nu^2 := \var(\hat{Y})$ and $\rho_1$ is the correlation between $Y(1)$ and $\hat{Y}$.
+This expression can be rearranged as
+\begin{align*}
+\var(r(1)) &= (\sigma_1 - \nu)^2 - 2(1-\rho_1)\sigma_1\nu
+\end{align*}
+
+Similarly,
+
+\begin{equation*}
+\var(r(0)) =  (\sigma_0 - \nu)^2 - 2(1-\rho_0)\sigma_0\nu
+\end{equation*}
+
+where $\rho_0$ is the correlation between $Y(0)$ and $\hat{Y}$. Therefore,
+
+\begin{equation}
+\var(\hat{\tau}^{adj}) = \frac{(\sigma_1 - \nu)^2 - 2(1-\rho_1)\sigma_1\nu}{N_t} + \frac{ (\sigma_0 - \nu)^2 - 2(1-\rho_0)\sigma_0\nu}{N_c}
+\end{equation}
+
+Compare this to  $\hat{\tau}^{diff}$, the usual difference in means estimator.  In our simulations, we observe that $\var(\hat{\tau}^{adj})$ is an order of magnitude smaller than $\var\left(\hat{\tau}^{diff}\right)$.  Using the same proof as above but substituting $Y$ for $r$, one can show that the variance of $\hat{\tau}^{diff}$ is
+
+\begin{equation}
+\var\left(\hat{\tau}^{diff}\right) = \frac{\sigma_1^2}{N_t} + \frac{\sigma_0^2}{N_c}
+\end{equation}
+
+A sufficient condition for $\var(\hat{\tau}^{adj}) < \var(\hat{\tau}^{diff})$ is to have $\sigma_1 \geq \frac{\nu}{2(2-\rho_1)}$ and $\sigma_0 \geq \frac{\nu}{2(2-\rho_0)}$.  Indeed, this always holds true when the variance in predictions is no more than twice the variance in outcomes.  A good predictor ought to have this property.  Therefore, we conclude that in reasonable circumstances, residualizing improves precision.
 
 
 
 
 
+\subsection{Estimation in observational studies}
+
+\todo
 
 
+\begin{lemma}
+If treatment is assigned independently across units, then $\ex\left( \frac{T_i}{N_t} \mid X\right) = \frac{1}{N}$. Likewise, $\ex\left(\frac{1-T_i}{N_c} \mid X\right) = \frac{1}{N}$, for $i = 1,\dots,N$.
+\end{lemma}
 
+\begin{proof}
+\begingroup
+\addtolength{\jot}{-0.5em}
+\begin{align*}
+\ex\left( \frac{T_i}{N_t} \mid X \right) &= \ex\left( \frac{1}{N_t} \ex(T_i \mid N_t) \right) \\
+&= \ex\left( \frac{1}{N_t} \frac{N_t}{N}\right) \\
+&= \frac{1}{N}
+\end{align*}
+\endgroup
+\end{proof}
 
+\begin{theorem}
+Consider the estimator
+$$ \hat{\tau}^{adj} = \frac{1}{N_t} \sum_{i: T_i = 1} (Y_i - \hat{Y}_i) - \frac{1}{N_c} \sum_{i: T_i = 0} (Y_i - \hat{Y}_i)$$
 
+If $Y(1), Y(0) \independent T \mid X$ and $0 < N_t < N$, then $\hat{\tau}$ is unbiased for the ATE.
+\end{theorem}
 
-
-
-
-
-
-
-
-
-
+\begin{proof}
+\begingroup
+\addtolength{\jot}{-0.5em}
+\begin{align*}
+\ex(\hat{\tau}) &= \ex\left[ \frac{1}{N_t} \sum_{i: T_i = 1} (Y_i - \hat{Y}_i) - \frac{1}{N_c} \sum_{i: T_i = 0} (Y_i - \hat{Y}_i)\right] \\
+&= \ex\left[ \sum_{i=1}^N \frac{T_i(Y_i(1) - \hat{Y}_i)}{N_t} - \frac{(1-T_i)(Y_i(0) - \hat{Y}_i)}{N_c} \right] \\
+&= \ex \left[ \sum_{i=1}^N \ex\left(\frac{T_i}{N_t}\mid X\right)\ex(Y_i(1) - \hat{Y}_i \mid X)- \ex\left(\frac{1-T_i }{N_c}\mid X\right)\ex(Y_i(0) - \hat{Y}_i \mid X) \right]  \\
+&= \ex \left[ \sum_{i=1}^N \ex\left(\frac{T_i}{N_t}\mid X\right)\ex(Y_i(1) \mid X)- \ex\left(\frac{1-T_i }{N_c}\mid X\right)\ex(Y_i(0) \mid X) \right]  \\
+&= \sum_{i=1}^N \ex\left[ \ex\left(\frac{T_i}{\sum_i T_i}\mid X\right)\right] Y_i(1) - \ex\left[ \ex\left(\frac{1-T_i }{\sum_i (1-T_i)}\mid X\right)\right] Y_i(0)    \\
+&= \frac{1}{N}\sum_{i=1}^N Y_i(1)- Y_i(0)\ \\
+&= ATE
+\end{align*}
+\endgroup
+\end{proof}
 
 
 
 
 
 \newpage
-\section{Empirical results}
+\subsection{Empirical Results}
 
+
+
+
+\section{Hypothesis Testing}
+
+\subsection{Tests of Residuals}
+Tests of residuals after covariance adjustment appear in various forms in the literature.
+Rosenbaum (2002) uses residuals after fitting prediction models to stabilize estimates of treatment effects for more powerful randomization tests.
+Rosenbaum's framework is limited to the case of binary treatment, where individuals are either assigned to treatment or receive the control.
+
+Shah and Bühlmann (2015) use residuals to test for the goodness of fit of high-dimensional linear models by testing for nonlinear signals in the residuals. %http://www.statslab.cam.ac.uk/~rds37/papers/RPtests
+
+
+\subsection{Hypothesis testing in randomized experiments}
+
+Suppose we observe $N$ individuals with responses $Y_1, \dots, Y_N$.  Assume that their response takes the form
+
+\begin{equation}
+Y_i(t) = f(t, X_i) + \eps_i
+\end{equation}
+where $X_i$ is a vector of covariates for individual $i$, $t$ is the treatment received, and $\eps_i$ is random error.  Assume that the $\eps_i$ are independent and identically distributed, with $\ex(\eps_i) = 0$.
+In a randomized experiment, the $N$ individuals are assigned treatment at random.
+$T_i$ is an indicator for whether individual $i$ received treatment, with $T_i \independent (X_i, \eps_i)$.
+
+Suppose we'd like to test the strong null hypothesis of no treatment effect, which implies that $Y_i(0) = Y_i(1)$.
+We'd test the null by computing some test statistic of the responses $Y = Y(T) = (Y_1(T_1), \dots, Y_N(T_N))$, and treatment assignment, $T = (T_1, \dots, T_N)$, as
+$\tau(Y, T)$.
+Note that under the strong null, $Y$ does not actually depend on $T$, and so for any permutation $T^*$ of treatment assignments, $Y(T) = Y(T^*)$.
+Suppose we take $K$ strata of observations.
+We would generate a null distribution for $\tau$ by permuting the treatment assignments within the $K$ strata to obtain an approximate distribution $\tau(Y, T^*_1), \dots, \tau(Y,T^*_B)$ for some large $B$ and compare our observed test statistic to the distribution to obtain a p-value.
+Extreme values of $\tau(Y, T)$ give evidence for rejecting the null hypothesis.
+
+We would like to stabilize the variance of $Y$ by removing some extra variance coming from known covariates $X_i$.
+In particular, under the strong null, $f(0, x) = f(1, x)$ for all $x$.
+Since the errors $\eps_i$ are IID, the values $Y_i(t) - f(t, X_i)$ are also IID (and thus exchangeable).
+However, $f$ is unobserved so we must estimate it.
+Since $f$ is constant with respect to treatment, we may estimate it as a function of $x$ alone.
+We'd like to use the residuals $e_i = Y_i(t) - \hat{f}(X_i)$ in place of the unobserved errors $\eps_i$.
+Under random assignment and IID assumptions, $e_i$ are also 
+
+
+
+
+\subsection{Hypothesis testing in observational studies}
+
+To ensure that the residuals are exchangeable, we need them to be some exchangeable function of $\eps_i$ within each stratum, e.g. if observation $i$ belongs to the $k$th stratum, then $e_i = g_k(\eps_i)$.
+\textcolor{red}{What are the conditions on the $g_k$ that ensure $e_i$ are exchangeable?}
+It is sufficient to have $g_k$ be a strictly monotonic function, such as $g_k(\eps) = \alpha_k + \beta_k \eps$.
+
+
+\textcolor{red}{If exchangeability does not hold, we want to find a transformation $\phi$ such that $\phi(e_i)$ are exchangeable.}
+
+
+\subsection{Empirical Results}
+
+
+
+
+\section{Discussion}
 
 \end{document}
