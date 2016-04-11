@@ -9,6 +9,7 @@
 %\usepackage{booktabs, multicol, multirow}
 %\usepackage[nohead]{geometry}
 \usepackage[singlespacing]{setspace}
+\setlength{\parindent}{0cm}
 %\usepackage[bottom]{footmisc}
 %\usepackage{floatrow}
 %\usepackage{float}
@@ -94,9 +95,12 @@ A standard assumption is exogeneity, or conditional independence:  $(Y(0), Y(1))
 
 
 \section{Estimation}
+We begin this section with a review of matching and stratification estimators.
+Next, we present the proposed estimator and show under what conditions it is unbiased for the average treatment effect.
+Finally, we show that a special case of the proposed estimator has smaller variance than the usual difference in means estimator in a completely randomized experiment.
 
-\subsection{Matching}
-% Do a long lit review of matching here
+\subsection{Matching and Stratified Estimators}
+\todo{ Do a lit review of matching here}
 
 In randomized control trials, the potential outcomes are balanced between treatment and control groups by construction: in other words, $(Y(0), Y(1)) \independent T$.
 In observational studies, this is no longer guaranteed.
@@ -111,103 +115,119 @@ When the propensity score estimates are wrong, then estimates of the average tre
 We'd like to try to achieve balance in the potential outcomes some other way:
 $(Y(0), Y(1)) \independent T \mid \hat{Y}$, where $\hat{Y}$ is the model-based prediction of $Y$, absent knowledge of the treatment,  for all units.
 
-\subsection{Estimation in randomized experiments}
+\subsection{Stratified Estimation}
 
 Recall that
 
 $$ATE = \ex(Y_1 -Y_0 )$$
 
 Let $\hat{Y} = f(X)$ be a prediction of the response under the control regime. \todo{ mention fitting f problem}
-The prediction uses no information on the treatment.
+\citet{hansen_prognostic_2008} defines a prognostic score as a function $\Psi(X)$ such that $Y(0) \independent X \mid \Psi(X)$ for all $X$.
+That is, conditioning on a prognostic score induces balance in the covariate distributions of individuals with contrasting potential outcomes.
+\citet{hansen_prognostic_2008} shows the following useful result:
+
+\begin{lemma}
+Suppose that there is no hidden bias, so $(Y(0), Y(1)) \independent T \mid X$. Then conditioning on a prognostic score deconfounds potential response under the control regime from treatment assignment:
+
+$$Y(0) \independent T \mid \Psi(X)$$
+
+Furthermore, if there is no effect modification, then
+
+$$Y(1) \independent T \mid \Psi(X)$$
+
+\end{lemma}
+
+We omit the details of effect modification and the proof.
 
 
-%Suppose that we stratify the observations according to their values of $\hat{Y}$ to obtain $S$ strata.
-%The $s$th stratum contains $n_{st}$ treated individuals and $n_{sc}$ control individuals for a total of $N_s = n_{st}+n_{sc}$ individuals, so $N = N_1 + \dots + N_S$.
-We estimate the ATE using $\hat{\tau}$:
 
-$$\hat{\tau} =  \sum_{s=1}^{S} \frac{N_S}{N}\left( \frac{1}{n_{st}} \sum_{i: T_i=1, S_i=s} (Y_i - \hat{Y}_i) - \frac{1}{n_{sc}} \sum_{i: T_i=0, S_i=s} (Y_i - \hat{Y}_i)\right)$$
+If there is no hidden bias, then $\hat{Y}$ is a prognostic score.
+Matching individuals exactly on $\hat{Y}$ presents the same issues as matching on the propensity score.
+Instead, we propose stratifying based on $\hat{Y}$.
+Let $\Psi_s(X)$ be a function that classifies individuals into one of $S$ strata based on their predicted control potential outcome.
+That is, $\Psi_s(X) = \Pi(\hat{Y}) = \Pi(f(X))$.
+The stratification rule $\Psi_s$ and estimation procedure for $\hat{Y}$ are defined independently of the observed sample.
+Define $S_i = \Psi_s(X_i)$ to be the stratum assignment of unit $i$.
+The $s$th stratum contains $N_{st}$ treated individuals and $N_{sc}$ control individuals for a total of $N_s = N_{st}+N_{sc}$ individuals, so $N = N_1 + \dots + N_S$.
+We estimate the ATE by
 
-If treatment assignment is at random within strata, then $\hat{\tau}$ is unbiased for the ATE:
 
+\begin{equation}\label{tau_hat}
+\hat{\tau} =  \sum_{s=1}^{S} \frac{N_S}{N}\left( \frac{1}{N_{st}} \sum_{i: T_i=1, S_i=s} (Y_i - \hat{Y}_i) - \frac{1}{N_{sc}} \sum_{i: T_i=0, S_i=s} (Y_i - \hat{Y}_i)\right)
+\end{equation}
+
+$\hat{\tau}$ is the weighted average of within-stratum estimated treatment effects, where weights are proportional to the stratum sizes.
+\todo{clean up this paragraph}
+For this estimator to ``work'', we need the stratum-specific estimators to be unbiased.
+A sufficient condition is conditional independence between potential outcomes and treatment given stratum assignment: $(Y(0), Y(1)) \independent T \mid S$.
+The stratification collapses redundant information in $\hat{Y}$ but must preserve the relevant information about how covariates relate to treatment assignment.
+This condition implies that $\pr(T_i = 1 \mid S_i = s, Y_i(1), Y_i(0)) = \pr(T_i = 1 \mid S_i = s) $, so the probability of any particular unit receiving treatment is constant within strata.
+Intuitively, treatment is ``as if random'' within strata.
+In a randomized experiment, the analogous condition is that the propensity score is constant within strata, i.e. treatment \textit{is} assigned at random within strata.
+
+We prove a useful lemma before our main result.
+
+\begin{lemma}
+If $(Y(0), Y(1)) \independent T \mid S$ and treatment is assigned independently across units within stratum $s$, then 
+$$\ex\left( \frac{T_i}{N_{st}} \mid S_i =s, \sum_{i}\ind{S_i = s} = N_s\right) = \frac{1}{N_s}$$
+Similarly, $\ex\left(\frac{1-T_i}{N_{sc}} \mid S_i = s, \sum_{i}\ind{S_i = s} = N_s\right) = \frac{1}{N_s}$.
+\end{lemma}
+
+\begin{proof}
+\begingroup
+\addtolength{\jot}{-0.5em}
 \begin{align*}
-\ex(\hat{\tau}) &= \ex\left[ \sum_{s=1}^{S} \frac{N_S}{N}\left( \frac{1}{n_{st}} \sum_{i: T_i=1, S_i=s} (Y_i - \hat{Y}_i) - \frac{1}{n_{sc}} \sum_{i: T_i=0, S_i=s} (Y_i - \hat{Y}_i)\right) \right] \\
-&= \ex\left[ \sum_{s=1}^{S} \frac{N_s}{N}\left( \frac{1}{N_s} \sum_{i: S_i=s} \frac{T_i(Y_i - \hat{Y}_i)}{n_{st}/N_s} - \frac{(1-T_i)(Y_i - \hat{Y}_i)}{n_{sc}/N_s}\right) \right] \\
-&= \sum_{s=1}^{S} \frac{1}{N}\left( \sum_{i: S_i=s} \frac{\ex(T_i)(Y_i(1) - \hat{Y}_i)}{n_{st}/N_s} - \frac{\ex(1-T_i)(Y_i(0) - \hat{Y}_i)}{n_{sc}/N_s}\right)  \\
-&= \sum_{s=1}^{S} \frac{1}{N}\left( \sum_{i: S_i=s} \frac{(n_{st}/N_s)(Y_i(1) - \hat{Y}_i)}{n_{st}/N_s} - \frac{(n_{sc}/N_s)(Y_i(0) - \hat{Y}_i)}{n_{sc}/N_s}\right)  \tag*{assuming $n_{st}, n_{sc}$ are fixed within strata} \\
-&= \sum_{s=1}^{S} \frac{1}{N}\left( \sum_{i: S_i=s}(Y_i(1) - \hat{Y}_i) - (Y_i(0) - \hat{Y}_i) \right) \\
-&= \frac{1}{N}\sum_{i=1}^N Y_i(1)- Y_i(0) \\
+\ex\left( \frac{T_i}{N_{st}} \mid S_i = s, \sum_{i}\ind{S_i = s} = N_s \right) &= \ex\left( \frac{1}{N_{st}} \ex(T_i \mid N_{st}, S_i = s, \sum_{i}\ind{S_i = s} = N_s) \right) \\
+&= \ex\left( \frac{1}{N_{st}} \frac{N_{st}}{N_s}\right) \\
+&= \frac{1}{N_s}
+\end{align*}
+\endgroup
+\end{proof}
+
+If  $\hat{\tau}$ is unbiased for the ATE:
+
+\begin{theorem}
+If $Y(1), Y(0) \independent T \mid S$ and $0 < N_{st} < N_s$ for $s = 1, \dots, S$, then $\hat{\tau}$ is unbiased for the ATE.
+\end{theorem}
+
+\begin{proof}
+Conditional on $N_1, \dots, N_S$ we have
+\begin{align*}
+\ex(\hat{\tau}) &= \ex\left[ \sum_{s=1}^{S} \frac{N_S}{N}\left( \frac{1}{N_{st}} \sum_{i: T_i=1, S_i=s} (Y_i - \hat{Y}_i) - \frac{1}{N_{sc}} \sum_{i: T_i=0, S_i=s} (Y_i - \hat{Y}_i)\right) \right] \\
+&= \ex\left[ \sum_{s=1}^{S} \frac{N_s}{N}\left( \frac{1}{N_s} \sum_{i: S_i=s} \frac{T_i(Y_i(1) - \hat{Y}_i)}{N_{st}/N_s} - \frac{(1-T_i)(Y_i(0) - \hat{Y}_i)}{N_{sc}/N_s}\right) \right] \\
+&=\ex\left[  \sum_{s=1}^{S} \frac{1}{N}\left( \sum_{i: S_i=s} \ex\left(\frac{T_i}{N_{st}/N_s} \mid S_i = s\right)\ex(Y_i(1) - \hat{Y}_i \mid S_i=s) \right.\right. \\
+& \qquad\left.\left. - \ex\left(\frac{1-T_i}{N_{sc}/N_s} \mid S_i=s\right)\ex(Y_i(0) - \hat{Y}_i \mid S_i=s) \right) \right] \\
+&= \ex\left[ \sum_{s=1}^{S} \frac{1}{N}\left( \sum_{i: S_i=s} \frac{1/N_s}{1/N_s}\ex(Y_i(1) - \hat{Y}_i \mid S_i=s) - \frac{1/N_s}{1/N_s}\ex(Y_i(0) - \hat{Y}_i \mid S_i=s)\right)\right] \\
+&= \ex\left[ \sum_{s=1}^{S} \frac{1}{N}\left( \sum_{i: S_i=s} \ex(Y_i(1) - \hat{Y}_i \mid S_i=s) - \ex(Y_i(0) - \hat{Y}_i \mid S_i=s)\right)\right] \\
+&= \ex\left[ \frac{1}{N}\sum_{i=1}^N \ex\left(Y_i(1)- Y_i(0) \mid S_i =s \right)\right] \\
 &= ATE
 \end{align*}
-
-\textcolor{red}{What happens if we don't have random treatment assignment but selection on observables holds?
-We need some sort of way to show that $\ex(T_i \mid X) = n_{st}/N_s$ anyways. 
-Is it the case that $\ex(T_i \mid X) = \ex(T_i \mid x_i) = \ex(T_i \mid \hat{Y}_i)$ ?
-In that case, given $\hat{Y}_i$, we know which stratum $i$ belongs to}
+Then, taking expectations with respect to $N_1, \dots, N_S$, we have that $\ex(\hat{\tau}) = ATE$ unconditionally as well.
+\end{proof}
 
 
-\subsubsection{Variance}
-Assume that we sample $N$ units from a super population and do a complete randomization with $N_t$ units assigned to treatment.  Define $\sigma_1^2 = \var_{SP}(Y(1))$, $\sigma_0^2 = \var_{SP}(Y(0))$, and $\sigma_{01}^2 = \var_{SP}(Y(1) - Y(0)) = \cov_{SP}(Y(1), Y(0))$.  
-
-Define $r_i = Y_i - \hat{Y}_i$ to be the observed residualized outcome in the sample.  We rewrite the estimator as
-
-$$\hat{\tau}^{adj} = \overline{r_t} - \overline{r_c}$$
-
-where $\overline{r_t}$ and $\overline{r_c}$ are the average residualized outcomes in the treatment and control groups, respectively.  The residualized potential outcomes are then defined as $r_i(1) = Y_i(1) - \hat{Y}_i$ and $r_i(0) = Y_i(0) - \hat{Y}_i$.  Let $\overline{r_i(1)}$ and $\overline{r_i(0)}$ be the average residualized potential outcomes in the sample and $\overline{R_i(1)}$ and $\overline{R_i(0)}$ be the analogous population quantities: that is, $\ex_{SP}(r_i(1)) = \overline{R_i(1)}$ and $\ex_{SP}(r_i(0)) = \overline{R_i(0)}$.
 
 
-\begin{align*}
-\var(\hat{\tau}^{adj}) &= \var\left( \overline{r_t} - \overline{r_c} \right) \\
-&= \ex\left[ \left(  \overline{r_t} - \overline{r_c} - \ex_{SP}\left[ r(1) - r(0) \right] \right)^2 \right] \\
-&= \ex\left[ \left(  \overline{r_t} - \overline{r_c} - \left(\overline{r(1)} - \overline{r(0)}\right) + \left(\overline{r(1)} - \overline{r(0)}\right) -  \ex_{SP}\left[ r(1) - r(0) \right] \right)^2 \right] \\
-&= \ex\left[  \left(  \overline{r_t} - \overline{r_c} - \left(\overline{r(1)} - \overline{r(0)}\right) \right)^2\right] + \ex\left[ \left( \left(\overline{r(1)} - \overline{r(0)}\right) -  \ex_{SP}\left[ r(1) - r(0) \right] \right)^2 \right] \\
-&\qquad\qquad + 2 \ex\left[  \left(  \overline{r_t} - \overline{r_c} - (\overline{r(1)} - \overline{r(0)}) \right)\left( (\overline{r(1)} - \overline{r(0)}) -  \ex_{SP}\left[ r(1) - r(0) \right] \right) \right]
-\end{align*}
+\subsubsection{Variance in a randomized experiment}
+Assume that we sample $N$ units from a super population and do a complete randomization with $N_t$ units assigned to treatment.  
+Instead of the stratified estimator used above, consider the special case of a single stratum:
 
-Note that the expectations above are taken over both the random sampling from the superpopulation and the random assignment of treatments.  The third term is zero because, after conditioning on the observed $r_1(1), \dots, r_N(1), r_1(0), \dots, r_N(0)$, the expected value of the first factor is $0$. \\
+$$\hat{\tau}^{adj} = \frac{1}{N_t} \sum_{i: T_i=1} (Y_i - \hat{Y}_i) - \frac{1}{N_c} \sum_{i: T_i = 0} (Y_i - \hat{Y}_i)$$
 
-The first term simplifies to
+Randomization ensures that this is an unbiased estimate of the ATE.
 
-\begin{align*}
-\ex\left[  \left(  \overline{r_t} - \overline{r_c} - \left(\overline{r(1)} - \overline{r(0)}\right) \right)^2\right]  &= \ex\left[  \left(  (\overline{r_t} - \overline{r(1)} )- ( \overline{r_c} -  \overline{r(0)}) \right)^2\right] \\
-&= \ex\left[   (\overline{r_t} - \overline{r(1)} )^2 \right] +  \ex\left[ ( \overline{r_c} -  \overline{r(0)} )^2\right]  - 2 \ex\left[ (\overline{r_t} - \overline{r(1)} ) ( \overline{r_c} -  \overline{r(0)}) )\right] \\
-&= \frac{\var(r(1))}{N_t} + \frac{\var(r(0))}{N_c} - \frac{\var(r(1) - r(0))}{N}
-\end{align*}
+Define $\sigma_1^2 = \var_{SP}(Y(1))$, $\sigma_0^2 = \var_{SP}(Y(0))$, and $\sigma_{01}^2 = \var_{SP}(Y(1) - Y(0)) = \cov_{SP}(Y(1), Y(0))$.  In addition, define $\nu^2 = \var_{SP}(\hat{Y})$, $\rho_1 = \frac{\cov_{SP}(Y(1), \hat{Y})}{\sigma_1\nu}$, and $\rho_0 = \frac{\cov_{SP}(Y(0), \hat{Y})}{\sigma_0\nu}$.
 
-by finite sample results (\textcolor{red}{cite the imbens and rubin text}).  The second term is simply the variance of the difference in means of all potential outcomes.  Thus, by definition
-
-$$ \ex\left[ \left( (\overline{r(1)} - \overline{r(0)}) -  \ex_{SP}\left[ r(1) - r(0) \right] \right)^2 \right] = \frac{\var(r(1) - r(0))}{N}$$
-
-Combining the three terms gives
-
-\begin{equation}
-\var(\hat{\tau}^{adj}) =\frac{\var(r(1))}{N_t} + \frac{\var(r(0))}{N_c}
-\end{equation}
-
-In terms of known quantities:
-
-\begin{align*}
-\var(r(1)) &= \var(Y(1) - \hat{Y}) \\
-&= \var(Y(1)) + \var(\hat{Y}) - 2\cov(Y(1), \hat{Y}) \\
-&= \sigma_1^2 + \nu^2 - 2 \rho_1 \sigma_1 \nu
-\end{align*}
-
-where $\nu^2 := \var(\hat{Y})$ and $\rho_1$ is the correlation between $Y(1)$ and $\hat{Y}$.
-This expression can be rearranged as
-\begin{align*}
-\var(r(1)) &= (\sigma_1 - \nu)^2 - 2(1-\rho_1)\sigma_1\nu
-\end{align*}
-
-Similarly,
-
-\begin{equation*}
-\var(r(0)) =  (\sigma_0 - \nu)^2 - 2(1-\rho_0)\sigma_0\nu
-\end{equation*}
-
-where $\rho_0$ is the correlation between $Y(0)$ and $\hat{Y}$. Therefore,
-
-\begin{equation}
+\begin{theorem}\label{thm:var_tau_hat_adjusted}
+\begin{equation}\label{var_tau_hat_adjusted}
 \var(\hat{\tau}^{adj}) = \frac{(\sigma_1 - \nu)^2 - 2(1-\rho_1)\sigma_1\nu}{N_t} + \frac{ (\sigma_0 - \nu)^2 - 2(1-\rho_0)\sigma_0\nu}{N_c}
 \end{equation}
+\end{theorem}
+
+The proof appears in the appendix.
+
+
+
 
 Compare this to  $\hat{\tau}^{diff}$, the usual difference in means estimator.  In our simulations, we observe that $\var(\hat{\tau}^{adj})$ is an order of magnitude smaller than $\var\left(\hat{\tau}^{diff}\right)$.  Using the same proof as above but substituting $Y$ for $r$, one can show that the variance of $\hat{\tau}^{diff}$ is
 
@@ -215,56 +235,15 @@ Compare this to  $\hat{\tau}^{diff}$, the usual difference in means estimator.  
 \var\left(\hat{\tau}^{diff}\right) = \frac{\sigma_1^2}{N_t} + \frac{\sigma_0^2}{N_c}
 \end{equation}
 
-A sufficient condition for $\var(\hat{\tau}^{adj}) < \var(\hat{\tau}^{diff})$ is to have $\sigma_1 \geq \frac{\nu}{2(2-\rho_1)}$ and $\sigma_0 \geq \frac{\nu}{2(2-\rho_0)}$.  Indeed, this always holds true when the variance in predictions is no more than twice the variance in outcomes.  A good predictor ought to have this property.  Therefore, we conclude that in reasonable circumstances, residualizing improves precision.
+To guarantee $\var(\hat{\tau}^{adj}) < \var(\hat{\tau}^{diff})$, it is sufficient to have $\sigma_1 \geq \frac{\nu}{2(2-\rho_1)}$ and $\sigma_0 \geq \frac{\nu}{2(2-\rho_0)}$.  
+Indeed, this always holds true when the variance in predictions is no more than four times the variance in outcomes.  
+This will hold for any reasonable predictor $\hat{Y}$.
+Therefore, we conclude that residualizing improves precision.
 
-
-
-
-
-\subsection{Estimation in observational studies}
-
-\todo
-
-
-\begin{lemma}
-If treatment is assigned independently across units, then $\ex\left( \frac{T_i}{N_t} \mid X\right) = \frac{1}{N}$. Likewise, $\ex\left(\frac{1-T_i}{N_c} \mid X\right) = \frac{1}{N}$, for $i = 1,\dots,N$.
-\end{lemma}
-
-\begin{proof}
-\begingroup
-\addtolength{\jot}{-0.5em}
-\begin{align*}
-\ex\left( \frac{T_i}{N_t} \mid X \right) &= \ex\left( \frac{1}{N_t} \ex(T_i \mid N_t) \right) \\
-&= \ex\left( \frac{1}{N_t} \frac{N_t}{N}\right) \\
-&= \frac{1}{N}
-\end{align*}
-\endgroup
-\end{proof}
-
-\begin{theorem}
-Consider the estimator
-$$ \hat{\tau}^{adj} = \frac{1}{N_t} \sum_{i: T_i = 1} (Y_i - \hat{Y}_i) - \frac{1}{N_c} \sum_{i: T_i = 0} (Y_i - \hat{Y}_i)$$
-
-If $Y(1), Y(0) \independent T \mid X$ and $0 < N_t < N$, then $\hat{\tau}$ is unbiased for the ATE.
-\end{theorem}
-
-\begin{proof}
-\begingroup
-\addtolength{\jot}{-0.5em}
-\begin{align*}
-\ex(\hat{\tau}) &= \ex\left[ \frac{1}{N_t} \sum_{i: T_i = 1} (Y_i - \hat{Y}_i) - \frac{1}{N_c} \sum_{i: T_i = 0} (Y_i - \hat{Y}_i)\right] \\
-&= \ex\left[ \sum_{i=1}^N \frac{T_i(Y_i(1) - \hat{Y}_i)}{N_t} - \frac{(1-T_i)(Y_i(0) - \hat{Y}_i)}{N_c} \right] \\
-&= \ex \left[ \sum_{i=1}^N \ex\left(\frac{T_i}{N_t}\mid X\right)\ex(Y_i(1) - \hat{Y}_i \mid X)- \ex\left(\frac{1-T_i }{N_c}\mid X\right)\ex(Y_i(0) - \hat{Y}_i \mid X) \right]  \\
-&= \ex \left[ \sum_{i=1}^N \ex\left(\frac{T_i}{N_t}\mid X\right)\ex(Y_i(1) \mid X)- \ex\left(\frac{1-T_i }{N_c}\mid X\right)\ex(Y_i(0) \mid X) \right]  \\
-&= \sum_{i=1}^N \ex\left[ \ex\left(\frac{T_i}{\sum_i T_i}\mid X\right)\right] Y_i(1) - \ex\left[ \ex\left(\frac{1-T_i }{\sum_i (1-T_i)}\mid X\right)\right] Y_i(0)    \\
-&= \frac{1}{N}\sum_{i=1}^N Y_i(1)- Y_i(0)\ \\
-&= ATE
-\end{align*}
-\endgroup
-\end{proof}
-
-
-
+Does stratification improve precision beyond this?
+Analytically, the variance of $\hat{\tau}$ from Equation~\ref{tau_hat} depends on the number of strata and how they partition the covariate space.
+While the within-stratum estimated treatment effects may have smaller variances, their covariance will generally be positive and thus inflate the overall variance.
+In the next section, we find empirically that \todo
 
 
 \newpage
@@ -329,5 +308,74 @@ It is sufficient to have $g_k$ be a strictly monotonic function, such as $g_k(\e
 
 
 \section{Discussion}
+
+\newpage
+\section{Appendix}
+
+
+\begin{proof}[Proof of Theorem~\ref{thm:var_tau_hat_adjusted}]
+Define $r_i = Y_i - \hat{Y}_i$ to be the observed residualized outcome in the sample.  We rewrite the estimator as
+
+$$\hat{\tau}^{adj} = \overline{r_t} - \overline{r_c}$$
+
+where $\overline{r_t}$ and $\overline{r_c}$ are the average residualized outcomes in the treatment and control groups, respectively.  The residualized potential outcomes are then defined as $r_i(1) = Y_i(1) - \hat{Y}_i$ and $r_i(0) = Y_i(0) - \hat{Y}_i$.  Let $\overline{r_i(1)}$ and $\overline{r_i(0)}$ be the average residualized potential outcomes in the sample and $\overline{R_i(1)}$ and $\overline{R_i(0)}$ be the analogous population quantities: that is, $\ex_{SP}(r_i(1)) = \overline{R_i(1)}$ and $\ex_{SP}(r_i(0)) = \overline{R_i(0)}$.
+
+
+\begin{align*}
+\var(\hat{\tau}^{adj}) &= \var\left( \overline{r_t} - \overline{r_c} \right) \\
+&= \ex\left[ \left(  \overline{r_t} - \overline{r_c} - \ex_{SP}\left[ r(1) - r(0) \right] \right)^2 \right] \\
+&= \ex\left[ \left(  \overline{r_t} - \overline{r_c} - \left(\overline{r(1)} - \overline{r(0)}\right) + \left(\overline{r(1)} - \overline{r(0)}\right) -  \ex_{SP}\left[ r(1) - r(0) \right] \right)^2 \right] \\
+&= \ex\left[  \left(  \overline{r_t} - \overline{r_c} - \left(\overline{r(1)} - \overline{r(0)}\right) \right)^2\right] + \ex\left[ \left( \left(\overline{r(1)} - \overline{r(0)}\right) -  \ex_{SP}\left[ r(1) - r(0) \right] \right)^2 \right] \\
+&\qquad\qquad + 2 \ex\left[  \left(  \overline{r_t} - \overline{r_c} - (\overline{r(1)} - \overline{r(0)}) \right)\left( (\overline{r(1)} - \overline{r(0)}) -  \ex_{SP}\left[ r(1) - r(0) \right] \right) \right]
+\end{align*}
+
+Note that the expectations above are taken over both the random sampling from the superpopulation and the random assignment of treatments.  The third term is zero because, after conditioning on the observed $r_1(1), \dots, r_N(1), r_1(0), \dots, r_N(0)$, the expected value of the first factor is $0$. \\
+
+The first term simplifies to
+
+\begin{align*}
+\ex\left[  \left(  \overline{r_t} - \overline{r_c} - \left(\overline{r(1)} - \overline{r(0)}\right) \right)^2\right]  &= \ex\left[  \left(  (\overline{r_t} - \overline{r(1)} )- ( \overline{r_c} -  \overline{r(0)}) \right)^2\right] \\
+&= \ex\left[   (\overline{r_t} - \overline{r(1)} )^2 \right] +  \ex\left[ ( \overline{r_c} -  \overline{r(0)} )^2\right]  - 2 \ex\left[ (\overline{r_t} - \overline{r(1)} ) ( \overline{r_c} -  \overline{r(0)}) )\right] \\
+&= \frac{\var(r(1))}{N_t} + \frac{\var(r(0))}{N_c} - \frac{\var(r(1) - r(0))}{N}
+\end{align*}
+
+by finite sample results (\textcolor{red}{cite the imbens and rubin text}).  The second term is simply the variance of the difference in means of all potential outcomes.  Thus, by definition
+
+$$ \ex\left[ \left( (\overline{r(1)} - \overline{r(0)}) -  \ex_{SP}\left[ r(1) - r(0) \right] \right)^2 \right] = \frac{\var(r(1) - r(0))}{N}$$
+
+Combining the three terms gives
+
+\begin{equation}\label{eqn:tau_hat_adj_unsimplified}
+\var(\hat{\tau}^{adj}) =\frac{\var(r(1))}{N_t} + \frac{\var(r(0))}{N_c}
+\end{equation}
+
+In terms of known quantities:
+
+\begin{align*}
+\var(r(1)) &= \var(Y(1) - \hat{Y}) \\
+&= \var(Y(1)) + \var(\hat{Y}) - 2\cov(Y(1), \hat{Y}) \\
+&= \sigma_1^2 + \nu^2 - 2 \rho_1 \sigma_1 \nu
+\end{align*}
+
+where $\nu^2 := \var(\hat{Y})$ and $\rho_1$ is the correlation between $Y(1)$ and $\hat{Y}$.
+This expression can be rearranged as
+\begin{align*}
+\var(r(1)) &= (\sigma_1 - \nu)^2 - 2(1-\rho_1)\sigma_1\nu
+\end{align*}
+
+Similarly,
+
+\begin{equation*}
+\var(r(0)) =  (\sigma_0 - \nu)^2 - 2(1-\rho_0)\sigma_0\nu
+\end{equation*}
+
+where $\rho_0$ is the correlation between $Y(0)$ and $\hat{Y}$. Plugging these expressions into equation~\ref{eqn:tau_hat_adj_unsimplified} gives the desired result.
+\end{proof}
+
+
+\bibliographystyle{plainnat}
+\bibliography{refs}
+
+
 
 \end{document}
