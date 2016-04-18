@@ -34,10 +34,20 @@ Matches <- function(treatment, prediction){
 #' Note, we need sufficient distribution of the treatment values within each bin. User should check this.
 #' @param treatment Vector of treatment values
 #' @param prediction Vector of predicted outcomes
+#' @param quantiles Vector of k-1 values that divide the k strata
 #' @param strata Number of strata desired. Default is 5.
 #' @return a list. Each entry is a group of matched individuals with their treatments.
-Strata <- function(treatment, prediction, strata = 5){
-  breaks <- quantile(prediction, probs = seq(0, 1, by = 1/strata))
+Strata <- function(treatment, prediction, breaks = NULL, strata = 5){
+  if(is.null(breaks)){
+    if(is.null(strata)){
+      stop("You must specify breaks or strata")
+    }else{
+      breaks <- quantile(prediction, probs = seq(0, 1, by = 1/strata))
+    }
+  }else{
+    breaks <- sort(breaks)
+    breaks <- c(min(c(prediction, breaks[1]-1)), breaks, max(c(prediction, breaks[length(breaks)]+1)))
+  }
   group_labels <- cut(prediction, breaks, include.lowest = TRUE)
   dat <- data.frame("index" = 1:length(treatment), "score" = prediction, "treatment" = treatment)
   strata <- lapply(unique(group_labels), function(g) dat[group_labels == g,])
