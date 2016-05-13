@@ -1,0 +1,153 @@
+\documentclass[11pt]{article}
+\title{Estimation Simulations - Simple Linear Outcomes}
+\author{Kellie Ottoboni}
+
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{graphicx,float}
+\usepackage[margin=0.75in]{geometry}
+\usepackage{bm}
+\usepackage[backend=bibtex]{biblatex}
+\usepackage{hyperref}
+\setlength{\parindent}{0cm}
+
+\begin{document}
+
+\maketitle
+<<chunk1, echo=FALSE, results ='hide', message=F, warning=F>>=
+library(knitr)
+library(xtable)
+library(ModelMatch)
+library(ggplot2)
+source("simulation_tools.R")
+opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, results = 'hide', cache=TRUE)
+@
+
+Set simulation parameters
+<<setparameters, echo=TRUE>>=
+set.seed(321)
+gamma <- c(1)
+B <- 1000
+N <- 100
+@
+
+\section{Comparing Model-based Matching to Other Methods}
+\subsection{Constant Treatment Effect}
+<<do_estimate, fig.align="center", fig.width=8, fig.height=8>>=
+res <- simulate_estimation(gamma, B = B, N = N, "random")
+res$treatment = rep("Random Treatment Assignment", nrow(res))
+res$errors = rep("Homoskedastic", nrow(res))
+
+res2 <- simulate_estimation(gamma, B = B, N = N, "correlated", nu = 1)
+res2$treatment = rep("Treatment Correlated with X1", nrow(res2))
+res2$errors = rep("Homoskedastic", nrow(res2))
+
+
+res3 <- simulate_estimation(gamma, B = B, N = N, selection="random", errors="heteroskedastic")
+res3$treatment = rep("Random Treatment Assignment", nrow(res3))
+res3$errors = rep("Heteroskedastic", nrow(res3))
+
+res4 <- simulate_estimation(gamma, B = B, N = N, selection="correlated", nu = 1,
+                            errors="heteroskedastic")
+res4$treatment = rep("Treatment Correlated with X1", nrow(res4))
+res4$errors = rep("Heteroskedastic", nrow(res4))
+
+
+@
+
+RMSE
+<<table_estimate, results="asis", cache=FALSE>>=
+res_list <- list(res, res3, res2, res4)
+rmse_table <- sapply(res_list, function(x) {
+  x %>% select(-Gamma, -treatment, -errors) %>% apply(., 2, compute_rmse, 1)
+  })
+colnames(rmse_table) <- rep(c("Homoskedastic", "Heteroskedastic"), 2)
+print(xtable(rmse_table), include.rownames = TRUE, include.colnames = TRUE)
+# Multicolumn to add in latex manually: first 2 cols Random treatment assignment, second 2 cols Correlated treatment with X1
+@
+
+Variance
+<<variance_table_estimate, results="asis", cache=FALSE>>=
+res_list <- list(res, res3, res2, res4)
+var_table <- sapply(res_list, function(x) {
+  x %>% select(-Gamma, -treatment, -errors) %>% apply(., 2, var, na.rm=TRUE)
+  })
+colnames(var_table) <- rep(c("Homoskedastic", "Heteroskedastic"), 2)
+print(xtable(var_table), include.rownames = TRUE, include.colnames = TRUE)
+# Multicolumn to add in latex manually: first 2 cols Random treatment assignment, second 2 cols Correlated treatment with X1
+@
+
+<<figure_estimate, fig.align="center", fig.width=8, fig.height=8, cache=FALSE>>=
+rescomb <- rbind(res, res2, res3, res4)
+rescomb <- rescomb %>% select(-Gamma) %>% melt(id.vars = c("treatment", "errors"))
+rescomb$errors <- factor(rescomb$errors, levels = c("Homoskedastic", "Heteroskedastic"))
+rescomb$variable <- factor(rescomb$variable, levels = rownames(rmse_table)[order(rmse_table[,4])])
+ggplot(rescomb, aes(x = variable, y = value)) +
+  geom_boxplot() +
+  facet_grid(errors~treatment) +
+  xlab("") +
+  ylab("Estimate") +
+  theme(axis.text.x=element_text(angle=-45, hjust=0)) +
+  geom_hline(yintercept = 1, linetype = "dashed")
+@
+
+
+\subsection{Heterogeneous Treatment Effect}
+<<do_estimate_het, fig.align="center", fig.width=8, fig.height=8>>=
+res_het <- simulate_estimation_nonconstant(gamma, B = B, N = N, "random")
+res_het$treatment = rep("Random Treatment Assignment", nrow(res_het))
+res_het$errors = rep("Homoskedastic", nrow(res_het))
+
+res2_het <- simulate_estimation_nonconstant(gamma, B = B, N = N, "correlated", nu = 1)
+res2_het$treatment = rep("Treatment Correlated with X1", nrow(res2_het))
+res2_het$errors = rep("Homoskedastic", nrow(res2_het))
+
+
+res3_het <- simulate_estimation_nonconstant(gamma, B = B, N = N, selection="random", errors="heteroskedastic")
+res3_het$treatment = rep("Random Treatment Assignment", nrow(res3_het))
+res3_het$errors = rep("Heteroskedastic", nrow(res3_het))
+
+res4_het <- simulate_estimation_nonconstant(gamma, B = B, N = N, selection="correlated", nu = 1,
+                            errors="heteroskedastic")
+res4_het$treatment = rep("Treatment Correlated with X1", nrow(res4_het))
+res4_het$errors = rep("Heteroskedastic", nrow(res4_het))
+
+
+@
+
+RMSE
+<<table_estimate_het, results="asis", cache=FALSE>>=
+res_list_het <- list(res_het, res3_het, res2_het, res4_het)
+rmse_table_het <- sapply(res_list_het, function(x) {
+  x %>% select(-Gamma, -treatment, -errors) %>% apply(., 2, compute_rmse, 1)
+  })
+colnames(rmse_table_het) <- rep(c("Homoskedastic", "Heteroskedastic"), 2)
+print(xtable(rmse_table_het), include.rownames = TRUE, include.colnames = TRUE)
+# Multicolumn to add in latex manually: first 2 cols Random treatment assignment, second 2 cols Correlated treatment with X1
+@
+
+Variance
+<<variance_table_estimate_het, results="asis", cache=FALSE>>=
+res_list_het <- list(res_het, res3_het, res2_het, res4_het)
+var_table_het <- sapply(res_list_het, function(x) {
+  x %>% select(-Gamma, -treatment, -errors) %>% apply(., 2, var, na.rm=TRUE)
+  })
+colnames(var_table_het) <- rep(c("Homoskedastic", "Heteroskedastic"), 2)
+print(xtable(var_table_het), include.rownames = TRUE, include.colnames = TRUE)
+# Multicolumn to add in latex manually: first 2 cols Random treatment assignment, second 2 cols Correlated treatment with X1
+@
+
+<<figure_estimate_het, fig.align="center", fig.width=8, fig.height=8, cache=FALSE>>=
+rescomb_het <- rbind(res_het, res2_het, res3_het, res4_het)
+rescomb_het <- rescomb_het %>% select(-Gamma) %>% melt(id.vars = c("treatment", "errors"))
+rescomb_het$errors <- factor(rescomb_het$errors, levels = c("Homoskedastic", "Heteroskedastic"))
+rescomb_het$variable <- factor(rescomb_het$variable, levels = rownames(rmse_table)[order(rmse_table[,4])])
+ggplot(rescomb_het, aes(x = variable, y = value)) +
+  geom_boxplot() +
+  facet_grid(errors~treatment) +
+  xlab("") +
+  ylab("Estimate") +
+  theme(axis.text.x=element_text(angle=-45, hjust=0)) +
+  geom_hline(yintercept = 1, linetype = "dashed")
+@
+
+\end{document}

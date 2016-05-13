@@ -1,0 +1,196 @@
+\documentclass[11pt]{article}
+\title{Linear Model Simulations}
+\author{Kellie Ottoboni}
+
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{graphicx,float}
+\usepackage[margin=0.75in]{geometry}
+\usepackage{bm}
+\usepackage[backend=bibtex]{biblatex}
+\usepackage{hyperref}
+\setlength{\parindent}{0cm}
+
+\begin{document}
+
+\maketitle
+<<chunk1, echo=FALSE, results ='hide', message=F, warning=F>>=
+library(knitr)
+library(xtable)
+library(ModelMatch)
+library(reshape2)
+library(ggplot2)
+library(gtable)
+source("simulation_tools.R")
+opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, results = 'hide', cache=TRUE)
+@
+
+\section{Hypothesis Testing}
+We compare the power of stratified permutation tests using model-based matching with different numbers of strata to the t-test from OLS and the Wilcoxon rank sum test.
+
+<<setup_test, cache=FALSE>>=
+Btst <- 1000
+Bx <- 1
+gammatst <- c(0, 0.25, 0.5)
+Ntst <- 100
+set.seed(456)
+@
+
+
+\subsection{Constant Treatment Effects}
+<<compare_tests1, fig.align="center", fig.width=8, fig.height=5>>=
+tst1 <- simulate_tests(gammatst, N = Ntst, B = Btst, Bx = Bx)
+tst1$errors <- rep("Homoskedastic", nrow(tst1))
+tst1$treat  <- rep("Random treatment\n Assignment", nrow(tst1))
+@
+
+<<compare_tests2, fig.align="center", fig.width=8, fig.height=5>>=
+tst2 <- simulate_tests(gammatst, N = Ntst, B = Btst, Bx = Bx, errors = "heteroskedastic")
+tst2$errors <- rep("Heteroskedastic", nrow(tst2))
+tst2$treat  <- rep("Random treatment\n Assignment", nrow(tst2))
+@
+
+<<compare_tests3, fig.align="center", fig.width=8, fig.height=5>>=
+tst3 <- simulate_tests(gammatst, N = Ntst, B = Btst, Bx = Bx, selection = "correlated")
+tst3$errors <- rep("Homoskedastic", nrow(tst3))
+tst3$treat  <- rep("Treatment Correlated\n with X1", nrow(tst3))
+@
+
+<<compare_tests4, fig.align="center", fig.width=8, fig.height=5>>=
+tst4 <- simulate_tests(gammatst, N = Ntst, B = Btst, Bx = Bx, selection = "correlated", errors = "heteroskedastic")
+tst4$errors <- rep("Heteroskedastic", nrow(tst4))
+tst4$treat  <- rep("Treatment Correlated\n with X1", nrow(tst4))
+@
+
+<<combine_test_results, fig.align="center", fig.width=8, cache=FALSE>>=
+tst_combined <- list(tst1, tst2, tst3, tst4)
+power_curves <- lapply(tst_combined, function(pvalues){
+  gamma <- unique(pvalues[,"Gamma"])
+  power_curves <- lapply(gamma, function(g){
+    gamma_subset <- pvalues[pvalues$Gamma == g, 1:5]
+    tmp <- as.data.frame(apply(gamma_subset, 2, compute_power))
+    tmp$alpha <- (0:99)/100
+    tmp$gamma <- rep(g, 100)
+    tmp
+  })
+  tmp2 <- do.call(rbind, power_curves)
+  tmp2$errors <- rep(pvalues$errors[1], nrow(tmp2))
+  tmp2$treat <- rep(pvalues$treat[1], nrow(tmp2))
+  tmp2
+})
+power_curves <- do.call(rbind, power_curves)
+
+tst_combined <- melt(power_curves, id.vars = c("treat", "errors", "alpha", "gamma"))
+tst_combined$errors <- factor(tst_combined$errors, levels = c("Homoskedastic", "Heteroskedastic"))
+boxes <- ggplot(tst_combined, aes(x = alpha, y = value, color = variable)) +
+  geom_line() +
+  facet_grid(gamma ~ treat + errors) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
+  ylab("Power") +
+  xlab("Significance Level") +
+  theme(legend.position = "bottom", legend.title = element_blank())
+z <- ggplotGrob(boxes)
+
+# add label for right strip
+z <- gtable_add_cols(z, z$widths[[12]])
+z <- gtable_add_grob(z,
+                     list(rectGrob(gp = gpar(col = NA, fill = gray(0.8))),
+                          textGrob("Constant Treatment Effect", rot = -90, gp = gpar(col = gray(0)))),
+                     t=5, 12, 9, name = paste(runif(2)))
+# add margins
+z <- gtable_add_cols(z, unit(1/8, "line"), 12)
+
+# draw it
+grid.newpage()
+grid.draw(z)
+@
+
+
+<<power_test_table, results='asis', cache=FALSE>>=
+tst_level_table <- tst_combined %>% filter(alpha == 0.05) %>% filter(gamma==0)
+tst_level_table <-  recast(tst_level_table, variable~treat+errors, measure.var = "value")
+rownames(tst_level_table) <- tst_level_table$variable
+print(xtable(tst_level_table %>% select(-variable), digits = 3), include.rownames = TRUE, include.colnames = TRUE)
+
+
+@
+
+
+\subsection{Heterogeneous Treatment Effects}
+<<compare_tests1_het, fig.align="center", fig.width=8, fig.height=5>>=
+tst1_het <- simulate_tests_nonconstant(gammatst, N = Ntst, B = Btst)
+tst1_het$errors <- rep("Homoskedastic", nrow(tst1_het))
+tst1_het$treat  <- rep("Random treatment\n Assignment", nrow(tst1_het))
+@
+
+<<compare_tests2_het, fig.align="center", fig.width=8, fig.height=5>>=
+tst2_het <- simulate_tests_nonconstant(gammatst, N = Ntst, B = Btst, errors = "heteroskedastic")
+tst2_het$errors <- rep("Heteroskedastic", nrow(tst2_het))
+tst2_het$treat  <- rep("Random treatment\n Assignment", nrow(tst2_het))
+@
+
+<<compare_tests3_het, fig.align="center", fig.width=8, fig.height=5>>=
+tst3_het <- simulate_tests_nonconstant(gammatst, N = Ntst, B = Btst, selection = "correlated")
+tst3_het$errors <- rep("Homoskedastic", nrow(tst3_het))
+tst3_het$treat  <- rep("Treatment Correlated\n with X1", nrow(tst3_het))
+@
+
+<<compare_tests4_het, fig.align="center", fig.width=8, fig.height=5>>=
+tst4_het <- simulate_tests_nonconstant(gammatst, N = Ntst, B = Btst, selection = "correlated", errors = "heteroskedastic")
+tst4_het$errors <- rep("Heteroskedastic", nrow(tst4_het))
+tst4_het$treat  <- rep("Treatment Correlated\n with X1", nrow(tst4_het))
+@
+
+<<combine_test_results_het, fig.align="center", fig.width=8, cache=FALSE>>=
+tst_combined_het <- list(tst1_het, tst2_het, tst3_het, tst4_het)
+power_curves_het <- lapply(tst_combined_het, function(pvalues){
+  gamma <- unique(pvalues[,"Gamma"])
+  power_curves <- lapply(gamma, function(g){
+    gamma_subset <- pvalues[pvalues$Gamma == g, 1:5]
+    tmp <- as.data.frame(apply(gamma_subset, 2, compute_power))
+    tmp$alpha <- (0:99)/100
+    tmp$gamma <- rep(g, 100)
+    tmp
+  })
+  tmp2 <- do.call(rbind, power_curves)
+  tmp2$errors <- rep(pvalues$errors[1], nrow(tmp2))
+  tmp2$treat <- rep(pvalues$treat[1], nrow(tmp2))
+  tmp2
+})
+power_curves_het <- do.call(rbind, power_curves_het)
+
+tst_combined_het <- melt(power_curves_het, id.vars = c("treat", "errors", "alpha", "gamma"))
+tst_combined_het$errors <- factor(tst_combined_het$errors, levels = c("Homoskedastic", "Heteroskedastic"))
+boxes_het <- ggplot(tst_combined_het, aes(x = alpha, y = value, color = variable)) +
+  geom_line() +
+  facet_grid(gamma ~ treat + errors) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
+  ylab("Power") +
+  xlab("Significance Level") +
+  theme(legend.position = "bottom", legend.title = element_blank())
+z_het <- ggplotGrob(boxes_het)
+
+# add label for right strip
+z_het <- gtable_add_cols(z_het, z_het$widths[[12]])
+z_het <- gtable_add_grob(z_het,
+                     list(rectGrob(gp = gpar(col = NA, fill = gray(0.8))),
+                          textGrob("Magnitude of Treatment Effect", rot = -90, gp = gpar(col = gray(0)))),
+                     t=5, 12, 9, name = paste(runif(2)))
+# add margins
+z_het <- gtable_add_cols(z_het, unit(1/8, "line"), 12)
+
+# draw it
+grid.newpage()
+grid.draw(z_het)
+@
+
+
+<<power_test_table_het, results='asis', cache=FALSE>>=
+tst_level_table_het <- tst_combined_het %>% filter(alpha == 0.05) %>% filter(gamma==0)
+tst_level_table_het <-  recast(tst_level_table_het, variable~treat+errors, measure.var = "value")
+rownames(tst_level_table_het) <- tst_level_table_het$variable
+print(xtable(tst_level_table_het %>% select(-variable), digits = 3), include.rownames = TRUE, include.colnames = TRUE)
+
+
+@
+
+\end{document}

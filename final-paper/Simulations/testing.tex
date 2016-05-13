@@ -1,0 +1,160 @@
+\documentclass[11pt]{article}\usepackage[]{graphicx}\usepackage[]{color}
+%% maxwidth is the original width if it is less than linewidth
+%% otherwise use linewidth (to make sure the graphics do not exceed the margin)
+\makeatletter
+\def\maxwidth{ %
+  \ifdim\Gin@nat@width>\linewidth
+    \linewidth
+  \else
+    \Gin@nat@width
+  \fi
+}
+\makeatother
+
+\definecolor{fgcolor}{rgb}{0.345, 0.345, 0.345}
+\newcommand{\hlnum}[1]{\textcolor[rgb]{0.686,0.059,0.569}{#1}}%
+\newcommand{\hlstr}[1]{\textcolor[rgb]{0.192,0.494,0.8}{#1}}%
+\newcommand{\hlcom}[1]{\textcolor[rgb]{0.678,0.584,0.686}{\textit{#1}}}%
+\newcommand{\hlopt}[1]{\textcolor[rgb]{0,0,0}{#1}}%
+\newcommand{\hlstd}[1]{\textcolor[rgb]{0.345,0.345,0.345}{#1}}%
+\newcommand{\hlkwa}[1]{\textcolor[rgb]{0.161,0.373,0.58}{\textbf{#1}}}%
+\newcommand{\hlkwb}[1]{\textcolor[rgb]{0.69,0.353,0.396}{#1}}%
+\newcommand{\hlkwc}[1]{\textcolor[rgb]{0.333,0.667,0.333}{#1}}%
+\newcommand{\hlkwd}[1]{\textcolor[rgb]{0.737,0.353,0.396}{\textbf{#1}}}%
+
+\usepackage{framed}
+\makeatletter
+\newenvironment{kframe}{%
+ \def\at@end@of@kframe{}%
+ \ifinner\ifhmode%
+  \def\at@end@of@kframe{\end{minipage}}%
+  \begin{minipage}{\columnwidth}%
+ \fi\fi%
+ \def\FrameCommand##1{\hskip\@totalleftmargin \hskip-\fboxsep
+ \colorbox{shadecolor}{##1}\hskip-\fboxsep
+     % There is no \\@totalrightmargin, so:
+     \hskip-\linewidth \hskip-\@totalleftmargin \hskip\columnwidth}%
+ \MakeFramed {\advance\hsize-\width
+   \@totalleftmargin\z@ \linewidth\hsize
+   \@setminipage}}%
+ {\par\unskip\endMakeFramed%
+ \at@end@of@kframe}
+\makeatother
+
+\definecolor{shadecolor}{rgb}{.97, .97, .97}
+\definecolor{messagecolor}{rgb}{0, 0, 0}
+\definecolor{warningcolor}{rgb}{1, 0, 1}
+\definecolor{errorcolor}{rgb}{1, 0, 0}
+\newenvironment{knitrout}{}{} % an empty environment to be redefined in TeX
+
+\usepackage{alltt}
+\title{Linear Model Simulations}
+\author{Kellie Ottoboni}
+
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{graphicx,float}
+\usepackage[margin=0.75in]{geometry}
+\usepackage{bm}
+\usepackage[backend=bibtex]{biblatex}
+\usepackage{hyperref}
+\setlength{\parindent}{0cm}
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\begin{document}
+
+\maketitle
+
+
+\section{Hypothesis Testing}
+We compare the power of stratified permutation tests using model-based matching with different numbers of strata to the t-test from OLS and the Wilcoxon rank sum test.
+
+
+
+
+\subsection{Constant Treatment Effects}
+
+
+
+
+
+
+
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}
+
+{\centering \includegraphics[width=\maxwidth]{figure/combine_test_results-1} 
+
+}
+
+
+
+\end{knitrout}
+
+
+% latex table generated in R 3.2.0 by xtable 1.8-0 package
+% Tue May 10 13:53:40 2016
+\begin{table}[ht]
+\centering
+\begin{tabular}{rrrrr}
+  \hline
+ & Random treatment
+ Assignment\_Homoskedastic & Random treatment
+ Assignment\_Heteroskedastic & Treatment Correlated
+ with X1\_Homoskedastic & Treatment Correlated
+ with X1\_Heteroskedastic \\ 
+  \hline
+MM Fine Strata & 0.043 & 0.061 & 0.073 & 0.072 \\ 
+  MM Coarse Strata & 0.050 & 0.051 & 0.115 & 0.122 \\ 
+  Residualized, No Strata & 0.045 & 0.058 & 0.180 & 0.251 \\ 
+  Wilcoxon & 0.038 & 0.052 & 0.596 & 0.867 \\ 
+  OLS & 0.048 & 0.059 & 0.052 & 0.048 \\ 
+   \hline
+\end{tabular}
+\end{table}
+
+
+
+\subsection{Heterogeneous Treatment Effects}
+
+
+
+
+
+
+
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}
+
+{\centering \includegraphics[width=\maxwidth]{figure/combine_test_results_het-1} 
+
+}
+
+
+
+\end{knitrout}
+
+
+% latex table generated in R 3.2.0 by xtable 1.8-0 package
+% Tue May 10 13:53:41 2016
+\begin{table}[ht]
+\centering
+\begin{tabular}{rrrrr}
+  \hline
+ & Random treatment
+ Assignment\_Homoskedastic & Random treatment
+ Assignment\_Heteroskedastic & Treatment Correlated
+ with X1\_Homoskedastic & Treatment Correlated
+ with X1\_Heteroskedastic \\ 
+  \hline
+MM Fine Strata & 0.044 & 0.053 & 0.048 & 0.083 \\ 
+  MM Coarse Strata & 0.048 & 0.049 & 0.116 & 0.127 \\ 
+  Residualized, No Strata & 0.043 & 0.047 & 0.269 & 0.312 \\ 
+  Wilcoxon & 0.052 & 0.045 & 0.631 & 0.713 \\ 
+  OLS & 0.052 & 0.043 & 0.043 & 0.044 \\ 
+   \hline
+\end{tabular}
+\end{table}
+
+
+\end{document}

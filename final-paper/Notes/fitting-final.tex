@@ -1,0 +1,134 @@
+
+\subsection{Fitting the model}\label{fitting_method}
+What's the difference between fitting our model for matching using all units and fitting the model using controls only?  
+We'll use a simple example in the Neyman-Rubin framework, using linear regression prediction with one covariate to illustrate the bias introduced by fitting the model different ways.
+To keep things especially simple, we will not do any stratification.
+Let $\hat{Y}_{ctrl}$ and $\hat{\tau}_{ctrl}$ denote the predictions and the estimate, respectively, using only the controls in the training group, and let $\hat{Y}_{all}$ and $\hat{\tau}_{all}$ denote the predictions and the estimate, respectively, using all units.
+
+Suppose we have a population of $N$ individuals.  
+Suppose without loss of generality that units $i=1,\dots, n$ receive the control condition and $i = n+1,\dots, N$ receive treatment, where $N = 2n$.  
+There is a constant, additive treatment effect.  
+That is, for each individual, $Y_i(1) - Y_i(0) = \Delta$ for some $\Delta \in \reals$.  
+Define $\overline{c} = \frac{1}{N}\sum_{i=1}^N Y_i(0)$, 
+$\overline{c}_c = \frac{1}{n}\sum_{i=1}^n Y_i(0)$, and 
+$\overline{c}_t = \frac{1}{n}\sum_{i=n+1}^N Y_i(0)$.  
+Define $\overline{t}, \overline{t}_c$, and $\overline{t}_t$ analogously using $Y_i(1)$ in place of $Y_i(0)$.
+
+Suppose that $Y_i(0) = c_i + x_i$ and $Y_i(1) = c_i+x_i + \Delta$, 
+where $c_i$ is some baseline value and $x_i$ is the value of the covariate.  
+The $x_i$ are not random quantities, but a fixed list of numbers given the population of $N$ units.  
+Let $r_c$ denote the correlation between $X$ and $Y$ in the control group, 
+$s_{Y_c}$ denote the standard deviation of the control outcomes, and 
+$s_{X_c}$ denote the standard deviation of the covariate in the control group.  
+Similarly, let $r$, $s_Y$, and $s_X$ be the analogous quantities in the population of $N$.  
+Using simple linear regression to predict the response without using treatment information, we have
+\begin{align*}
+\hat{Y}_{i, ctrl} &= \overline{c}_c + \overline{x}_c + r_c \frac{s_{Y_c}}{s_{X_c}}(x_i - \overline{x}_c) \\
+\hat{Y}_{i, all} &= \overline{c} + \overline{x} + r\frac{s_Y}{s_X}(x_i - \overline{x})
+\end{align*}
+\noindent Note, in practice, we would want to create the prediction rules $\hat{Y}_{ctrl}$ and $\hat{Y}_{all}$ based on independent samples.
+For expository clarity, we use the same sample to create the prediction rule and do the estimation and testing.\footnote{
+In the prediction rule, we would use averages from the training set instead of the test set.
+Then, the estimators would have additional terms to account for the difference between test and training set averages.
+If the test and training sets were really random samples from the same population (as they ought to be), then these terms would be small in any particular sample, and equal to zero in expectation over repeated samples.
+}
+
+\subsubsection{Estimation}
+The estimators we use are
+
+\begin{align*}
+\hat{\tau}_{ctrl} &= \frac{1}{n}\sum_{i = n+1}^N (Y_i - \hat{Y}_{i, ctrl}) - \frac{1}{n}\sum_{i=1}^n (Y_i - \hat{Y}_{i, ctrl} ) \nonumber \\
+\hat{\tau}_{all} &= \frac{1}{n}\sum_{i = n+1}^N (Y_i - \hat{Y}_{i, all}) - \frac{1}{n}\sum_{i=1}^n (Y_i - \hat{Y}_{i, all} ) \nonumber \\
+\end{align*}
+We'll simplify the estimators in terms of known quantities.
+\begin{align}
+\hat{\tau}_{ctrl} &= \frac{1}{n}\sum_{i = n+1}^N (Y_i - \hat{Y}_{i, ctrl}) - \frac{1}{n}\sum_{i=1}^n (Y_i - \hat{Y}_{i, ctrl} ) \nonumber \\
+&=  \frac{1}{n}\sum_{i = n+1}^N (c_i + x_i + \Delta - \overline{c}_c - \overline{x}_c - r_c \frac{s_{Y_c}}{s_{X_c}}(x_i - \overline{x}_c)) - \frac{1}{n}\sum_{i=1}^n (c_i + x_i - \overline{c}_c - \overline{x}_c - r_c \frac{s_{Y_c}}{s_{X_c}}(x_i - \overline{x}_c))  \nonumber \\
+&= \Delta+  \frac{1}{n}\sum_{i = n+1}^N (c_i + x_i - r_c \frac{s_{Y_c}}{s_{X_c}}(x_i - \overline{x}_c)) - \frac{1}{n}\sum_{i=1}^n (c_i + x_i - r_c \frac{s_{Y_c}}{s_{X_c}}(x_i - \overline{x}_c))  \nonumber \\
+&= \Delta + \overline{c}_t + \overline{x}_t - r_c \frac{s_{Y_c}}{s_{X_c}}(\overline{x}_t - \overline{x}_c) - \overline{c}_c - \overline{x}_c  \nonumber \\
+&= \Delta + (\overline{c}_t - \overline{c}_c) + (1 - r_c \frac{s_{Y_c}}{s_{X_c}})(\overline{x}_t - \overline{x}_c)
+\end{align}
+
+\noindent and similarly,
+
+\begin{equation}
+\hat{\tau}_{all} = \Delta + (\overline{c}_t - \overline{c}_c) + (1 - r\frac{s_{Y}}{s_{X}})(\overline{x}_t - \overline{x}_c)
+\end{equation}
+
+The two estimators look similar.  The first term in both is $\Delta$, the quantity we want to estimate.  The second term is the difference in mean baseline responses between the treatment and control groups.  The selection on observables assumption grants us that treatment assignment does not depend on the baseline $c_i$, and therefore this term equals $0$ in expectation.  The third term includes the difference in mean covariates between the treatment and control groups.  If treatment assignment is random, this term also equals $0$ in expectation.  If treatment is correlated with $X$, then it may not be the case that $\ex(\overline{x}_t) = \ex(\overline{x}_c)$ and so the factor in front of this term matters. 
+
+In the first case, the multiplier is $1 - r_c\frac{s_{Y_c}}{s_{X_c}}$.  Let $\cov$ and $\var$ denote the sample (as opposed to population) covariance and variance.  Using definitions, we have
+
+$$r_c = \frac{\cov(X_c, Y_c)}{s_{X_c}s_{Y_c}} = \frac{\cov(X_c, X_c + C_c)}{s_{X_c}s_{Y_c}} = \frac{\var(X_c) + \cov(X_c, C_c)}{s_{X_c}s_{Y_c}}   = \frac{s_{X_c}}{s_{Y_c}} + \frac{\cov(X_c, C_c)}{s_{X_c}s_{Y_c}}$$
+
+However, in any particular control group, there may be some correlation between $X_c$ and $C_c$, so the second term will be nonzero. 
+However, assuming that $x_i \independent c_i$ in the sample of $N$, the second term will equal $0$ in expectation.  
+We omit the algebra.
+$$\ex\left( (1 - r_c\frac{s_{Y_c}}{s_{X_c}})(\overline{x}_t - \overline{x}_c) \right) = \ex\left( -\frac{\cov(X_c, C_c)}{\var(X_c)}(\overline{x}_t - \overline{x}_c) \right) = 0$$
+
+\noindent This shows that $\hat{\tau}_{ctrl}$ is an unbiased estimate of $\Delta$.  On the other hand,
+
+\begin{align*}
+r &= \frac{\cov(X, Y)}{s_{X}s_{Y}} = \frac{\cov(X, X + C + \Delta T)}{s_{X}s_{Y}} = \frac{\var(X) + \cov(X, C) + \Delta\cov(X, T)}{s_{X}s_{Y}} \\
+&= \frac{s_{X}}{s_{Y}} + \frac{\cov(X, C)}{s_{X}s_{Y}} + \Delta\frac{\cov(X, T)}{s_{X}s_{Y}}
+\end{align*}
+
+As above, the second term will be small when $X$ and $C$ are unrelated. 
+However, the third term will not vanish unless treatment is orthogonal to $X$.
+Note that now, these quantities aren't random: they're based on all $N$ units.  
+This implies
+$$\ex\left((1- r\frac{s_{Y}}{s_{X}})(\overline{x}_t - \overline{x}_c)\right) =\left( \frac{\cov(X, C)}{\var{X}} + \Delta \frac{\cov(X, T)}{\var{X}} \right) \ex(\overline{x}_t - \overline{x}_c) \neq 0$$
+\noindent since the expected difference in mean covariates won't equal $0$ if treatment is correlated with $X$.
+Thus, $\hat{\tau}_{all}$ is a biased estimator of $\Delta$.  This simple example illustrates why when doing estimation, we want to fit our predictive model $\hat{Y} = f(X_1, \dots, X_p)$ using the controls only.  If we use all of the observations, then we capture some of the effect of the predictors which are correlated with treatment assignment.
+
+\subsubsection{Hypothesis testing}
+We'll use the same test statistic for our tests, either $\hat{\tau}_{ctrl}$ or $\hat{\tau}_{all}$.
+In the math that follows, we omit the subscript for which model we used to predict $\hat{Y}$.
+Let $T^* = (T_1^*, \dots, T_N^*)$ be a permutation of the treatment assignments $T_1, \dots, T_N$.
+Our test statistic can be written
+
+\begin{equation}
+\tau(T^*) = \frac{1}{n} \sum_{i: T_i^* =1}(Y_i - \hat{Y}_i) - \frac{1}{n} \sum_{i: T_i^* = 0} (Y_i - \hat{Y}_i)
+\end{equation}
+
+Suppose we fix $T_1, \dots, T_N$ and obtain some permuted treatment vector $T^*$.
+Our test statistic simplifies:
+
+\begin{align*}
+\tau(T^*) &= \frac{1}{n} \sum_{i=1}^N T_i^* (Y_i - \hat{Y}_i) - (1-T_i^*)(Y_i - \hat{Y}_i) \\
+&= \frac{1}{n} \sum_{i=1}^N T_i^* (Y_i - \hat{Y}_i) - (1-T_i^*)(Y_i - \hat{Y}_i) \\
+&= \frac{1}{n} \sum_{i=1}^N 2T_i^* (Y_i - \hat{Y}_i) - (Y_i - \hat{Y}_i) \\
+&= \frac{1}{n} \sum_{i=1}^N 2T_i^* (T_iY_i(1) + (1-T_i)Y_i(0) - \hat{Y}_i) - (T_iY_i(1) + (1-T_i)Y_i(0) - \hat{Y}_i) \\
+&= \frac{1}{n} \sum_{i=1}^N 2T_i^*T_i (Y_i(1) - Y_i(0)) + 2T_i^*(Y_i(0) - \hat{Y}_i) - T_i (Y_i(1) - Y_i(0)) - (Y_i(0) - \hat{Y}_i) \\
+&= \frac{2\Delta}{n} \sum_{i=1}^N T_i^* T_i - \Delta + \frac{1}{n} \sum_{i=1}^N (2T_i^* - 1)(Y_i(0) - \hat{Y}_i)
+\end{align*}
+
+The first term counts the number of units with $T_i = T_i^* = 1$; this is the overlap between the actual and permuted treatment vector.
+In expectation, the number of such units is $N/4$ (since treatment assignment is independent between the actual and permuted treatments, and each is distributed as Binomial with probability of assignment $1/2$), so this term cancels the second term.
+
+The third term varies depending on whether we fit our model to controls only or to all observations.  It is the sum of the difference between each individual's potential outcome under control and their predicted outcome, multiplied by either $-1$ or $1$ according to whether $T_i^*$ is $0$ or $1$.
+When $\hat{Y}_i = \hat{Y}_{i, ctrl}$, the residuals $Y_i(0) - \hat{Y}_i$ may be systematically smaller in magnitude for individuals with $T_i=0$ than for individuals with $T_i=1$. Then the test statistic for the observed data will be
+
+\begin{align*}
+\tau_{ctrl}(T) &= \frac{2\Delta}{n}\sum_{i=1}^N T_i - \Delta + \frac{1}{n}\sum_{i: T_i=1} (Y_i(0) - \hat{Y}_{i, ctrl}) - \frac{1}{n}\sum_{i: T_i=0} (Y_i(0) - \hat{Y}_{i, ctrl}) \\
+&= \Delta + \frac{1}{n}\sum_{i: T_i=1} (Y_i(0) - \hat{Y}_{i, ctrl})
+\end{align*}
+
+\noindent The third term drops out because the residuals of a linear regression sum to zero.  
+Intuitively, it seems more likely that this sum will be extremely large in magnitude due to the way the model was fit, rather than any intrinsic treatment effect.  
+The residuals from this model are not exchangeable under the null hypothesis.  
+This will lead to a greater probability of incorrectly rejecting the null hypothesis.
+
+On the other hand, using $\hat{Y}_{i, all}$ will give an observed test statistic of
+
+$$\tau_{all}(T) = \Delta + \frac{1}{n}\sum_{i: T_i=1} (Y_i(0) - \hat{Y}_{i, all}) - \frac{1}{n}\sum_{i: T_i=0} (Y_i(0) - \hat{Y}_{i, all})$$ 
+
+Under the null of no treatment effect whatsoever, assuming $X$ and $T$ are uncorrelated, the residuals here are exchangeable.\footnote{
+If $X$ and $T$ are correlated, this is false. 
+They're not exchangeable -- there might be some $x_i$ with high leverage, making those residuals artificially small.
+This problem is exactly why we must assume conditional independence between treatment and potential outcomes within strata, or Assumption~\ref{assume}.}  
+Thus, we'd expect the second and third term to roughly cancel each other out under any random treatment assignment, although for any particular treatment assignment, they will differ somewhat.  
+
+In summary, we must fit our predictive models differently according to whether we intend to estimate the average treatment effect or to test the strong null hypothesis of no effect whatsoever.  The difference lies in the way we use the residuals.  Residualizing in estimation helps reduce variation and increase the precision of estimators, but helps detect variation due to the treatment when we do testing.  For estimation, we fit our predictive model to controls only to eliminate any leftover correlation between the treatment and other covariates.  However, for testing, we want to capture this correlation, so we must fit to all observations.
+
+

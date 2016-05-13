@@ -1,0 +1,921 @@
+\documentclass[12pt]{article}
+\usepackage[margin=0.75in]{geometry}
+\usepackage{color}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{natbib}
+\usepackage[singlespacing]{setspace}
+%\setlength{\parindent}{0cm}
+\usepackage{graphicx,float}
+\usepackage{hyperref}
+
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{assumption}{Assumption}
+
+\newcommand{\beq}{\begin{equation}}
+\newcommand{\eeq}{\end{equation}}
+
+\newcommand{\cD}{{\mathcal D}}
+\newcommand{\cF}{{\mathcal F}}
+\newcommand{\todo}[1]{{\color{red}{TO DO: \sc #1}}}
+
+\newcommand{\reals}{\mathbb{R}}
+\newcommand{\integers}{\mathbb{Z}}
+\newcommand{\naturals}{\mathbb{N}}
+\newcommand{\rationals}{\mathbb{Q}}
+
+\newcommand{\ind}{\mathbb{I}} % Indicator function
+\newcommand{\pr}{\mathbb{P}} % Generic probability
+\newcommand{\ex}{\mathbb{E}} % Generic expectation
+\newcommand{\var}{\textrm{Var}}
+\newcommand{\cov}{\textrm{Cov}}
+
+\newcommand{\normal}{N} % for normal distribution (can probably skip this)
+\newcommand{\eps}{\varepsilon}
+\newcommand\independent{\protect\mathpalette{\protect\independenT}{\perp}}
+\def\independenT#1#2{\mathrel{\rlap{$#1#2$}\mkern2mu{#1#2}}}
+
+% Convergence
+\newcommand{\convd}{\stackrel{d}{\longrightarrow}} % convergence in distribution/law/measure
+\newcommand{\convp}{\stackrel{P}{\longrightarrow}} % convergence in probability
+\newcommand{\convas}{\stackrel{\textrm{a.s.}}{\longrightarrow}} % convergence almost surely
+
+\newcommand{\eqd}{\stackrel{d}{=}} % equal in distribution/law/measure
+\newcommand{\argmax}{\textrm{argmax}}
+\newcommand{\argmin}{\textrm{argmin}}
+\renewcommand{\baselinestretch}{1.5}
+
+\title{Model-based matching}
+\author{Kellie Ottoboni}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+
+\section{Introduction}
+
+Observational studies in a range of fields including social sciences, epidemiology, and ecology are used to make inferences about cause and effect.  
+An ideal situation is the randomized control trial, in which treatment is assigned at random.
+Randomization ensures that treatment is statistically independent of all variables.
+This enables us to disentangle the effect of treatment from the effect of other variables.
+This is rarely the case in observational studies.
+There, the treatment effect is obscured by ``confounders,'' variables that affect both the assignment of treatment and the outcome. 
+
+In principle, one could solve the problem of confounding by grouping individuals with identical values of each of their pretreatment covariates, 
+then estimating treatment effects within groups and averaging to obtain an overall estimate.
+In practice, high dimensionality makes this impossible.
+Studies typically measure a large number of covariates, so groups of individuals matched exactly on all pretreatment covariates can be too small to provide adequate statistical power to detect a significant treatment effect. 
+Post hoc methods to construct a group of controls whose covariates balance the covariates in the treatment group include exact matching on covariates, matching and stratifying by propensity score (\cite{rosenbaum_central_1983}, \cite{austin_comparison_2014}, \cite{lunceford_stratification_2004}), genetic matching (\cite{diamond_genetic_2013}), propensity score weighting (\cite{hirano_efficient_2003}), and maximum-entropy balancing (\cite{hainmueller_entropy_2012}).  
+These balanced control groups are then used to estimate average treatment effects using standard methods such as unadjusted differences of means or linear regression controlling for other covariates.  
+Estimates of the average treatment effect using matching or weighting can be biased if the propensity score model is misspecified (\cite{drake_effects_1993})
+or if the outcome model is misspecified (\cite{freedman_weighting_2008}).  
+
+We propose two steps to improve precision and reduce bias, both of which rely on a prediction of the outcome in the control regime.
+First, we replace the observed outcomes with their residuals after subtracting off the predicted control outcome.
+\citet{rosenbaum_covariance_2002} used this type of residualization to stabilize the outcomes, since much of their variance may be attributed to observed covariates.
+Second, we stratify observations on their predicted control outcomes.
+If strata are chosen appropriately, then treatment assignment is ``as if'' random within strata.
+This enables us to estimate treatment effects unbiasedly and to carry out randomization inference within strata. 
+
+We develop the theory for this procedure, which we call ``model-based matching,'' both for estimating treatment effects and carrying out hypothesis tests.
+Throughout, we assume that there are only two levels of treatment and that outcomes are continuous.
+In the first section, we develop the notation and theory to estimate the average treatment effect.
+In the next section, we introduce randomization inference and extend it to observational studies in which we want to test whether there is any treatment effect whatsoever.
+Finally, we discuss benefits and shortcomings of the proposed framework.
+
+
+
+\section{Estimation}
+We begin this section with a review of matching and stratification estimators.
+Next, we present the proposed estimator and show under what conditions it is unbiased for the average treatment effect.
+Finally, we show that a special case of the proposed estimator has smaller variance than the usual difference in means estimator in a completely randomized experiment.
+
+\subsection{Matching and Stratified Estimators}
+We use the potential outcomes (Neyman [1923], but see \citet{neyman_application_1990}) notation throughout the paper.
+Suppose that we randomly sample $N$ individuals from a super population.
+
+Assume that every individual, indexed by $i$, has two fixed potential outcomes:
+we observe outcome $Y_i(0)$ if they are assigned to control or $Y_i(1)$ if they are assigned to treatment.
+We may never observe both.
+The observed outcome can be written $Y_i = Y_i(1)T_i + Y_i(0)(1-T_i)$, where $T_i$ is an indicator for treatment. 
+For individual $i$, the effect of the treatment is thus $Y_i(1) - Y_i(0)$.
+The main estimand of interest is the average treatment effect:
+$$ATE= \ex\left[ Y(1) - Y(0) \right]$$
+
+In randomized control trials, potential outcomes are balanced between treatment and control groups by construction.
+Mathematically, $(Y(1), Y(0)) \independent T$.
+This enables us to estimate the ATE unbiasedly, because individuals in different treatment groups are, on average, alike in every way but the treatment.
+In observational studies, this is no longer guaranteed. 
+
+One way to address this issue is to achieve a weaker form of balance by conditioning on other observed covariates, $X$.
+\citet{rosenbaum_central_1983} achieve this weaker form of balance by conditioning on the propensity score, $p(x)$, the probability of receiving treatment conditional on having covariates $X=x$.
+They show that the propensity score is a balancing score, such that
+$$X \independent T \mid p(X)$$
+Intuitively, matching or stratifying individuals by their propensity score approximates a randomized experiment within groups.
+Then, one can obtain unbiased estimates of ATE within groups and of the overall ATE by averaging over group-wise treatment effects. 
+
+One issue is that in observational studies, the propensity score is unknown and must be estimated.
+It is common to estimate the propensity score using logistic or probit regression with a set of pretreatment covariates.
+This may be problematic if the propensity model is misspecified, either in its functional form or due to omitted variables.
+When propensity score estimates are incorrect, then the estimated ATE may be biased (\cite{drake_effects_1993}).
+Even if one uses a correctly-estimated propensity score to weight regressions instead of match, the model of the outcome must be correctly specified, otherwise estimates may be biased and standard errors may be under- or overestimated (\cite{freedman_weighting_2008}). 
+
+Matching and stratification may balance the treatment and control groups even if the propensity score estimates are wrong, as long as the right units are matched.
+However, there is no ``optimal'' procedure to group observations.
+There are many variants on matching such as matching with or without replacement; one-to-one, one-to-many, or many-to-many; and within a fixed distance or nearest neighbor (\cite{austin_comparison_2014}). 
+Which method achieves the best balance on covariates depends on the particular dataset.
+Similarly, there is no optimal way to choose a stratification rule.
+The literature generally suggests using five strata based on quintiles of the estimated propensity scores, though there is little justification for this (\cite{austin_comparison_2007}).
+
+
+
+\subsection{Stratified Estimation}
+Instead of relying on the propensity score to achieve balance, we'd like to try to condition on something else.
+We propose using $\hat{Y}$, a model-based prediction of $Y$, absent knowledge of the treatment. 
+
+\citet{hansen_prognostic_2008} defines a prognostic score as a function $\Psi(X)$ such that $Y(0) \independent X \mid \Psi(X)$ for all $X$.
+Conditioning on a prognostic score induces balance in the covariate distributions of individuals with contrasting potential outcomes.
+\citet{hansen_prognostic_2008} shows the following useful result:
+
+\begin{lemma}
+Suppose that there is no hidden bias, so $(Y(1), Y(0)) \independent T \mid X$. Then conditioning on a prognostic score deconfounds potential response under the control regime from treatment assignment:
+
+$$Y(0) \independent T \mid \Psi(X)$$
+
+\noindent Furthermore, if there is no effect modification, then
+
+$$Y(1) \independent T \mid \Psi(X)$$
+
+\end{lemma}
+
+\noindent We omit the details of effect modification and the proof.
+
+
+Let $\hat{Y} = f(X)$ be a prediction of the response under the control regime. 
+If there is no hidden bias, then $\hat{Y}$ is a prognostic score.
+Matching individuals exactly on $\hat{Y}$ presents the same issues as matching on the propensity score:
+incorrect estimates of $\hat{Y}$ may lead to bad matches that worsen balance between groups.
+Instead, we propose stratifying on $\hat{Y}$.
+This allows us some error in estimating $\hat{Y}$, as long as our estimates are ``close enough'' to correct.
+
+
+Let $\Psi_s(X)$ be a function that classifies individuals into one of $S$ strata based on their predicted control potential outcome.
+That is, $\Psi_s(X) = \Pi(\hat{Y})  = \Pi(f(X))$ for some $\Pi: \reals \to \{1, \dots, S\}$.
+The stratification rule $\Psi_s$ and estimation procedure for $\hat{Y}$ should be defined independently of the observed sample to avoid overfitting.
+Define $S_i = \Psi_s(X_i)$ to be the stratum assignment of unit $i$.
+The $s$th stratum contains $N_{st}$ treated individuals and $N_{sc}$ control individuals for a total of $N_s = N_{st}+N_{sc}$ individuals, so $N = N_1 + \dots + N_S$.
+We estimate the ATE by
+
+
+\begin{equation}\label{tau_hat}
+\hat{\tau}^{strat} =  \sum_{s=1}^{S} \frac{N_s}{N}\left( \frac{1}{N_{st}} \sum_{i: T_i=1, S_i=s} (Y_i - \hat{Y}_i) - \frac{1}{N_{sc}} \sum_{i: T_i=0, S_i=s} (Y_i - \hat{Y}_i)\right)
+\end{equation}
+
+$\hat{\tau}^{strat}$ is the weighted average of within-stratum estimated treatment effects with weights proportional to the stratum sizes.
+For this estimator to be unbiased, we need the stratum-specific estimators to be unbiased.
+The following assumption is a sufficient condition for unbiasedness within strata.
+
+\begin{assumption}\label{assume}
+Conditional independence between potential outcomes and treatment given stratum assignment: $(Y(1), Y(0)) \independent T \mid S$.
+\end{assumption}
+
+For Assumption~\ref{assume} to hold, the stratification must be so fine that it variations in $\hat{Y}$ within strata are unrelated to treatment assignment.
+Intuitively, the results within each strata must act as though they had come from a randomized experiment.
+This condition implies that $\pr(T_i = 1 \mid S_i = s, Y_i(1), Y_i(0)) = \pr(T_i = 1 \mid S_i = s) $, so the probability of any particular unit receiving treatment is constant within strata.
+In an actual randomized experiment, the analogous condition is that the treatment is assigned at random within strata.
+
+
+
+
+\begin{theorem}\label{thm:tau_hat_adjusted_unbiased}
+If $(Y(1), Y(0) )\independent T \mid S$ and $0 < N_{st} < N_s$ for $s = 1, \dots, S$, then $\hat{\tau}^{strat}$ is unbiased for the ATE.
+\end{theorem}
+
+
+The proof appears in the appendix.\footnote{
+Throughout the following results, we follow \citet{miratrix_adjusting_2013} and condition on the event that $N_{st} >0 $ and $N_{sc} >0$ for all strata $s = 1, \dots, S$.
+This is the set of possible treatment assignments for which the stratified estimator is defined.
+We omit this notation in the mathematics for legibility.
+}
+The result generalizes to Bernoulli treatment assignment as well, so long as treatment probabilities are constant within strata.
+See Lemma~\ref{lemma:expectation_treated} for details.
+
+
+
+\subsubsection{Variance in a randomized experiment}
+Assume that we sample $N$ units from a super population and do a complete randomization with $N_t$ units assigned to treatment.  
+Instead of the stratified estimator used above, consider the special case of a single stratum:
+
+$$\hat{\tau}^{adj} = \frac{1}{N_t} \sum_{i: T_i=1} (Y_i - \hat{Y}_i) - \frac{1}{N_c} \sum_{i: T_i = 0} (Y_i - \hat{Y}_i)$$
+
+\noindent Randomization ensures that this is an unbiased estimate of the ATE.
+
+Define $\sigma_1^2 = \var_{SP}(Y(1))$, $\sigma_0^2 = \var_{SP}(Y(0))$, and $\sigma_{01}^2 = \var_{SP}(Y(1) - Y(0)) = \cov_{SP}(Y(1), Y(0))$.  
+In addition, define the variance of the predicted outcomes in the population as $\nu^2 = \var_{SP}(\hat{Y}) = \ex_{SP}\left[ (\hat{f}(X) - \ex_{SP}\left[ \hat{f}(X)\right] )^2 \right]$.
+%We emphasize that this expectation depends on the covariates $X$ rather than outcomes.
+Finally, define the correlation coefficient between the predicted outcomes $\hat{Y}$ and true outcomes:
+$\rho_1 = \frac{\cov_{SP}(Y(1), \hat{Y})}{\sigma_1\nu}$, and $\rho_0 = \frac{\cov_{SP}(Y(0), \hat{Y})}{\sigma_0\nu}$.
+
+\begin{theorem}\label{thm:var_tau_hat_adjusted}
+\begin{equation}\label{var_tau_hat_adjusted}
+\var(\hat{\tau}^{adj}) = \frac{(\sigma_1 - \nu)^2 - 2(1-\rho_1)\sigma_1\nu}{N_t} + \frac{ (\sigma_0 - \nu)^2 - 2(1-\rho_0)\sigma_0\nu}{N_c}
+\end{equation}
+\end{theorem}
+
+\noindent The proof appears in the appendix.
+
+Compare this to $\hat{\tau}^{diff}$, the unadjusted difference in means estimator:
+$$\hat{\tau}^{diff} = \frac{1}{N_t} \sum_{i: T_i=1}Y_i - \frac{1}{N_c} \sum_{i: T_i = 0} Y_i $$
+
+
+
+%\noindent In simulations in Section~\ref{estimation_simulations}, we observe that $\var(\hat{\tau}^{adj})$ is an order of magnitude smaller than $\var\left(\hat{\tau}^{diff}\right)$.  
+\noindent Using the same proof as above but substituting $Y$ for $Y - \hat{Y}$, one can show that the variance of $\hat{\tau}^{diff}$ is
+
+\begin{equation}
+\var\left(\hat{\tau}^{diff}\right) = \frac{\sigma_1^2}{N_t} + \frac{\sigma_0^2}{N_c}
+\end{equation}
+
+To guarantee $\var(\hat{\tau}^{adj}) < \var(\hat{\tau}^{diff})$, it is sufficient to have $\sigma_1 \geq \frac{\nu}{2(2-\rho_1)}$ and $\sigma_0 \geq \frac{\nu}{2(2-\rho_0)}$.  
+Indeed, this always holds true when the variance in predictions is no more than four times the variance in outcomes.  
+This will hold for any reasonable predictor $\hat{Y}$.
+Therefore, we conclude that residualizing improves precision.
+
+Does stratification improve precision beyond this?
+Analytically, the variance of $\hat{\tau}^{strat}$ from Equation~\ref{tau_hat} depends on the number of strata and how they partition the covariate space.
+Let $\hat{\tau}_s$ be the difference in mean outcomes for the $s$-th stratum.
+Then, it is possible for stratification to improve variance.
+
+\begin{theorem}\label{thm:var_tau_hat_stratified}
+Suppose we do complete randomization of $N$ individuals sampled from a super population.
+If $\var(\hat{\tau}_s) \leq \var(\hat{\tau}^{adj})$ for all $s$, then $\var(\hat{\tau}^{strat}) < \var(\hat{\tau}^{adj})$.
+\end{theorem}
+
+\noindent The proof appears in the appendix.
+We confirm this empirically in the next section.
+
+\subsection{Empirical Results}\label{estimation_simulations}
+
+\subsubsection{Constant Additive Treatment Effects}\label{estimate_cate}
+We generate a population of $N=100$ individuals.
+For each unit, we observe two independent standard normal covariates $X_1$ and $X_2$.
+We assign treatment in two ways:
+\begin{itemize}
+\item Random treatment assignment: $50$ individuals are assigned to treatment and the remaining $50$ are assigned to control.
+\item Correlated with $X_1$: Among the $50$ individuals with lowest $X_1$ values, $10$ are randomly assigned treatment. 
+Among the remaining $50$ individuals with largest $X_1$ values, $40$ are randomly assigned treatment.
+\end{itemize}
+
+\noindent The outcome is given by
+$$Y_i = 1 + 2X_{1i} + 4X_{2i} + \tau T_i + \eps_i$$
+
+\noindent In this section, we fix the treatment effect at $\tau = 1$.
+%In later simulations, we will vary $\tau_i$, both holding it constant across individuals and making treatment effects heterogeneous.
+We generate the errors in two ways:
+\begin{itemize}
+\item Homoskedastic: the $\eps_i$ are IID standard normal
+\item Heteroskedastic: the $\eps_i$ are independent and normal with $\ex(\eps_i) = 0$ and $\var(\eps_i) = X_{1i}^2 + X_{2i}^2$
+\end{itemize}
+We run all four combinations of treatment assignment and error distributions.
+We compare seven methods of estimating the treatment effect: the raw difference in means, OLS controlling for $X_1$ and $X_2$, model-based matching with fine stratification, model-based matching with coarse stratification, residualized difference in means without stratification, one-to-one propensity score matching, and entropy balancing (\citet{hainmueller_entropy_2012}).
+We run all of the methods under ``best case'' circumstances, assuming that we  have measured the relevant variables and know the correct functional forms.
+To estimate the predictor $\hat{f}$ for residualization, we split the sample into a training set and test set to avoid overfitting the predictive model.
+This overfitting would produce biased estimates of subgroup treatment effects: in strata with low predicted control outcomes, estimates would be biased upward, whereas strata with high predicted control outcomes would have downward biased estimates (\cite{abadie_endogenous_2013}).
+We use a random $30\%$ of the dataset to estimate $\hat{Y}$, estimating a correctly-specified linear model using the control observations.
+Then using the remaining $70\%$, we predict their outcomes under control and use these $\hat{Y}$s to stratify finely, with 20 strata, and coarsely, with 5 strata.
+We estimate the propensity score with a correctly-specified probit regression and match each treated individual to a control, doing one-to-one matching with replacement. 
+
+Figure~\ref{fig:est.sim.1} shows the distribution of these estimates over the 1000 simulations.
+Table~\ref{tab:est.sim.1} compares the RMSE of the seven methods and Table~\ref{tab:est.sim.var.1} compares their variances.
+In all cases, OLS performs the best.
+The Gauss-Markov theorem predicts this, as we specified the model correctly.
+Entropy balancing has the next smallest RMSE and variance.
+Model-based matching performs nearly as well, with slightly higher RMSE and variance.
+Propensity score matching and the raw difference in means are highly variable, with estimates as high as $6$ in the worst case.
+The unadjusted difference in means is the only estimator that appears to be biased.
+
+
+\begin{figure}[H]
+\centering 
+\includegraphics[width=\linewidth]{Simulations/figure/figure_estimate-1} 
+\caption{Estimates of the average treatment effect over 1000 simulations (constant treatment effect design)}
+\label{fig:est.sim.1}
+\end{figure}
+% latex table generated in R 3.2.0 by xtable 1.8-0 package
+% Sat May  7 16:12:17 2016
+\begin{table}[ht]
+\centering
+\begin{tabular}{|r|cc|cc|}
+ \multicolumn{1}{c}{} & \multicolumn{2}{c}{Random treatment assignment} & \multicolumn{2}{c}{Treatment Correlated with $X_1$} \\
+  \hline
+ & Homoskedastic & Heteroskedastic & Homoskedastic & Heteroskedastic \\ 
+  \hline
+  OLS with Controls & 0.20 & 0.29 & 0.23 & 0.34 \\ 
+  Entropy Balancing & 0.20 & 0.30 & 0.28 & 0.51 \\ 
+  MM Fine Strata & 0.28 & 0.39 & 0.41 & 0.63 \\ 
+  MM Coarse Strata & 0.26 & 0.38 & 0.42 & 0.67 \\ 
+  Residualized, No Strata & 0.27 & 0.39 & 0.44 & 0.70 \\ 
+  Propensity Score Matching & 0.61 & 0.68 & 1.19 & 1.19 \\ 
+  Raw Diff in Means & 0.89 & 0.93 & 2.06 & 2.07 \\ 
+   \hline
+\end{tabular}
+\caption{RMSE over 1000 simulations (constant treatment effect design)}
+\label{tab:est.sim.1}
+\end{table}
+% latex table generated in R 3.2.0 by xtable 1.8-0 package
+% Sat May  7 16:12:17 2016
+\begin{table}[ht]
+\centering
+\begin{tabular}{|r|cc|cc|}
+ \multicolumn{1}{c}{} & \multicolumn{2}{c}{Random treatment assignment} & \multicolumn{2}{c}{Treatment Correlated with $X_1$} \\
+  \hline
+ & Homoskedastic & Heteroskedastic & Homoskedastic & Heteroskedastic \\ 
+  \hline
+  OLS with Controls & 0.04 & 0.08 & 0.05 & 0.11 \\ 
+  Entropy Balancing & 0.04 & 0.09 & 0.08 & 0.26 \\ 
+  MM Fine Strata & 0.07 & 0.15 & 0.15 & 0.39 \\ 
+  MM Coarse Strata & 0.07 & 0.15 & 0.18 & 0.45 \\ 
+  Residualized, No Strata & 0.07 & 0.15 & 0.20 & 0.48 \\ 
+  Propensity Score Matching & 0.37 & 0.46 & 1.42 & 1.43 \\ 
+  Raw Diff in Means & 0.79 & 0.87 & 0.76 & 0.79 \\ 
+   \hline
+\end{tabular}
+\caption{Variance over 1000 simulations (constant treatment effect design)}
+\label{tab:est.sim.var.1}
+\end{table}
+
+
+\subsubsection{Heterogeneous Treatment Effects}\label{estimate_het_ate}
+We use the same set-up as in Section~\ref{estimate_cate}, but now the outcome is
+$$Y_i = 1 + 2X_{1i} + 4X_{2i} + \tau(1 + X_1 + X_2)T_i + \eps_i$$
+Again, we set $\tau=1$.
+Then $\ex(Y(1) - Y(0) \mid X_1, X_2) = 1 + X_1 + X_2$, but unconditionally, the ATE is $1$.
+We keep the estimators the same except for OLS, to which we add interactions between the covariates and treatment.
+
+Figure~\ref{fig:est.sim.2} shows the distribution of estimates for the seven estimators.
+Table~\ref{tab:est.sim.2} compares the RMSE of the seven methods and Table~\ref{tab:est.sim.var.2} compares their variances.
+OLS still dominates the other methods.
+However, model-based matching performs nearly as well as entropy balancing when treatment assignment is random and performs better when treatment assignment is correlated with $X_1$.
+Figure~\ref{fig:est.sim.2} shows that when the treatment is correlated with $X_1$, there is bias in all of the estimators besides OLS.
+Model-based matching reduces bias, with the smallest bias coming from the finest stratification.
+
+
+\begin{figure}[H]
+\centering 
+\includegraphics[width=\linewidth]{Simulations/figure/figure_estimate_het-1} 
+\caption{Estimates of the average treatment effect over 1000 simulations (heterogeneous design)}
+\label{fig:est.sim.2}
+\end{figure}
+% latex table generated in R 3.2.0 by xtable 1.8-0 package
+% Sat May  7 16:12:17 2016
+\begin{table}[ht]
+\centering
+\begin{tabular}{|r|cc|cc|}
+ \multicolumn{1}{c}{} & \multicolumn{2}{c}{Random treatment assignment} & \multicolumn{2}{c}{Treatment Correlated with $X_1$} \\
+  \hline
+ & Homoskedastic & Heteroskedastic & Homoskedastic & Heteroskedastic \\ 
+  \hline
+  OLS with Controls & 0.20 & 0.29 & 0.24 & 0.32 \\ 
+  Entropy Balancing & 0.29 & 0.37 & 0.60 & 0.72 \\ 
+  MM Fine Strata & 0.33 & 0.43 & 0.47 & 0.68 \\ 
+  MM Coarse Strata & 0.33 & 0.43 & 0.54 & 0.77 \\ 
+  Residualized, No Strata & 0.36 & 0.46 & 0.69 & 0.85 \\ 
+  Propensity Score Matching & 0.63 & 0.71 & 1.31 & 1.29 \\ 
+  Raw Diff in Means & 1.05 & 1.08 & 2.55 & 2.59 \\ 
+   \hline
+\end{tabular}
+\caption{RMSE over 1000 simulations (heterogeneous design)}
+\label{tab:est.sim.2}
+\end{table}
+% latex table generated in R 3.2.0 by xtable 1.8-0 package
+% Sat May  7 16:12:17 2016
+\begin{table}[ht]
+\centering
+\begin{tabular}{|r|cc|cc|}
+ \multicolumn{1}{c}{} & \multicolumn{2}{c}{Random treatment assignment} & \multicolumn{2}{c}{Treatment Correlated with $X_1$} \\
+  \hline
+ & Homoskedastic & Heteroskedastic & Homoskedastic & Heteroskedastic \\ 
+  \hline
+  OLS with Controls & 0.04 & 0.08 & 0.06 & 0.11 \\ 
+  Entropy Balancing & 0.08 & 0.14 & 0.12 & 0.26 \\ 
+  MM Fine Strata & 0.10 & 0.18 & 0.20 & 0.42 \\ 
+  MM Coarse Strata & 0.11 & 0.19 & 0.24 & 0.52 \\ 
+  Residualized, No Strata & 0.13 & 0.21 & 0.25 & 0.48 \\ 
+  Propensity Score Matching & 0.40 & 0.50 & 1.42 & 1.43 \\ 
+  Raw Diff in Means & 1.10 & 1.17 & 0.95 & 0.95 \\ 
+   \hline
+\end{tabular}
+\caption{Variance over 1000 simulations (heterogeneous design)}
+\label{tab:est.sim.var.2}
+\end{table}
+
+
+\subsubsection{Conclusions}
+
+The three residualized estimators are neither best nor worst, as measured by both RMSE and variance.
+Of the three, the bias and RMSE are smallest when we use fine strata.
+Coarse strata perform nearly as well, while the unstratified estimator is the worst of the three.
+One reason that the residualized estimators have a greater variance than OLS and entropy balancing because the sample size used to estimate the effect is cut when we split the sample into test and training sets.
+One work-around would be the repeated sample splitting proposed by \cite{abadie_endogenous_2013}: one would carry out the sample splitting procedure and estimate the treatment effect on a held-out test set $M$ times, then average over the $M$ estimates to obtain a grand estimate.
+
+In the constant treatment effects example, OLS and entropy balancing appear to work well.
+Compared to the raw difference in means, the residualized estimators improve RMSE and reduce variance by introducing a small amount of bias.
+In the heterogeneous treatment effects example, OLS dominates. 
+Model-based matching is next best because stratification reduces bias compared to the other methods.
+Without knowing a priori whether treatment effects are constant or heterogeneous, it is unclear what the model-based matching estimators will do to the bias-variance trade-off.
+Model-based matching is most beneficial, compared to other methods, when outcomes are highly variable and the treatment effect varies according to observed covariates.  
+
+\section{Hypothesis Testing}
+\citet{fisher_design_1935} developed and popularized the use of permutation inference to analyze randomized experiments.
+Combined with the Neyman-Rubin causal model, they offer a powerful framework for assessing the effect of a treatment.
+In this framework, one assumes that individuals' potential outcomes are fixed and what is random is the treatment assignment.
+Permutation inference tests the strong null hypothesis that there is no effect whatsoever, individual by individual.
+Under the null, one knows both the mechanism of random treatment assignment and both potential outcomes -- namely, they're equal.
+This information is sufficient to compute the null distribution of any test statistic.
+Such a test is guaranteed to have the correct significance level.
+Furthermore, one can choose the test statistic to maximize power against any alternative.
+For instance, if one is comparing two experimental groups and wants power against the alternative hypothesis that treatment shifts the response by a constant, 
+then a popular test statistic is the mean of the treatment group outcomes.
+The Wilcoxon rank sum test is a particular case of a permutation test comparing two groups, obtained by replacing outcomes by their ranks (\cite{wilcoxon_individual_1945}).
+
+Classical statistical tests are used more prominently than permutation tests.
+The most commonly used tests are based on likelihood ratios of parametric distributions (\cite{neyman_problem_1933}).
+Such tests assume that the data come from some parametric distribution and test the null hypothesis that some parameter(s) of the distribution take a certain value.
+Likelihood ratio tests have been shown to be uniformly most powerful in certain situations, such as testing a simple null hypothesis against a simple alternative hypothesis.
+Such tests are usually calibrated using asymptotic normal theory to approximate the true null distribution.
+In the example of comparing two experimental groups, one might test the null hypothesis of no average treatment effect by conducting a t-test for the coefficient of the treatment indicator in a linear regression.
+This parametric null hypothesis is a weaker null: it amounts to hypothesizing that there is no effect \textit{on average}.
+While the strong null implies the weak null, the converse is not true.
+In this framework, the outcomes are random variables; randomness comes from sampling from one or more distributions, not from treatment assignment per se.
+While some parametric tests are asymptotically equivalent to the permutation inference (\cite{samii_equivalencies_2012}), the methods may give significantly different results in finite samples.
+
+We propose several modifications to the standard permutation test to render it amenable to observational studies.
+These modifications follow the same idea as the previous section: we rely on the predicted control outcome, $\hat{Y}$.
+We use the predictions to residualize the outcomes.
+This improves precision by removing extraneous variance due to covariates $X$ (\cite{rosenbaum_covariance_2002}).
+In addition, we stratify on the predicted outcomes.
+The reason for stratification is twofold.
+First, it allows us some room for error in the predicted outcomes, as long as units within strata are ``close enough.''
+Second, it allows for the possibility that the outcome depends on the treatment in a non-constant way.
+We only look for associations between treatment and outcome within small ranges of the predicted control outcome.
+In effect, we relax the typical assumption of a constant treatment effect to one of locally constant effects.
+
+In the next section, we develop the notation for permutation inference in randomized experiments.
+Next, we extend the idea to observational studies, where treatment assignment is ``as if'' random among subsets of individuals.
+We discuss the assumptions necessary for the two-step residualization and stratification test to work.
+Finally, we present simulations comparing the proposed method with common hypothesis tests for a treatment effect.
+
+\subsection{Hypothesis testing in randomized experiments}
+Suppose we run a completely randomized experiment with $N$ individuals, $N_t$ of whom receive treatment.
+We use the same notation as above: $T_i$ is an indicator for whether individual $i$ received treatment, $(Y_i(0), Y_i(1))$ are individual $i$'s potential outcomes under the control and treatment regimes, respectively, and $S_i$ is unit $i$'s stratum assignment. 
+
+Let $\mathcal{W}$ denote the set of all possible treatment assignment vectors $\mathbf{T}$.
+Under complete randomization, there are ${N \choose N_t}$ equally likely elements in $\mathcal{W}$.
+Suppose we'd like to test the strong null hypothesis of no treatment effect against the alternative hypothesis that there is some effect:
+\begin{align}
+H_0&: Y_i(1) = Y_i(0) \text{ for all } i = 1,\dots,N \label{strongh0} \\
+H_1&: Y_i(1) \neq Y_i(0) \text{ for some } i \label{strongh1}
+\end{align}
+
+Under the strong null, we know both potential outcomes for every individual because they are identical.
+We test the null by computing some test statistic $\tau(\mathbf{Y}, \mathbf{T})$, a function of treatment assignment 
+$\mathbf{T} = (T_1, \dots, T_N)$ and observed responses $\mathbf{Y} = \mathbf{Y}(\mathbf{T}) = (Y_1(T_1), \dots, Y_N(T_N))$.
+Note that under the strong null, $\mathbf{Y}$ does not actually depend on $\mathbf{T}$, and so for any permutation $\mathbf{T}^*$ of treatment assignments, $\mathbf{Y}(\mathbf{T}) = \mathbf{Y}(\mathbf{T}^*)$.
+
+The null distribution of $\tau$ is given by the distribution of $\tau(\mathbf{Y}, \mathbf{T}^*)$ for all $\mathbf{T}^* \in \mathcal{W}$.
+In principle, we could compute all ${N \choose N_t}$ possible values of $\tau(\mathbf{Y}, \mathbf{T}^*)$ to find the exact distribution of $\tau$.
+In practice, we estimate the null distribution by permuting the treatment assignments across individuals (essentially sampling from $\mathcal{W}$ with equal probability) for some large number of times $B$ and calculating $\tau(\mathbf{Y}, \mathbf{T}^*_1), \dots,\tau(\mathbf{Y}, \mathbf{T}^*_B)$.
+The p-value is approximated by comparing our observed test statistic to the estimated distribution.
+Extreme values of $\tau(\mathbf{Y}, \mathbf{T})$ give evidence for rejecting the null hypothesis. 
+
+We would like to stabilize the variance of $Y$ by removing some extra variance coming from known covariates $X$.
+\citet{rosenbaum_covariance_2002} devises more powerful randomization tests by replacing outcomes by residuals after predicting the outcome with covariates.
+Given a function $\hat{Y}$ which predicts $Y(0)$ using $X$, the residuals $r_i = Y_i - \hat{Y}_i$ are fixed values computed from the data, not stochastic.
+Even if the randomization had been different, the residuals would be the same.
+Under the null hypothesis, $Y_i(0) = Y_i(1)$ for all $i$, so we may think of $\hat{Y}$ as predicting the outcome using no information on treatment assignment.
+Then the vector of observed residuals $\mathbf{r} = \mathbf{r}(\mathbf{T})$ does not actually vary with the treatment, 
+so $\mathbf{r}(\mathbf{T}) = \mathbf{r}(\mathbf{T}^*)$ for all $\mathbf{T}, \mathbf{T}^* \in \mathcal{W}$. 
+
+Further, one may conduct a conditional test by conditioning on an ancillary statistic and thereby restricting the set of possible treatment assignments.
+For instance, we may want to incorporate information on the $S$ strata in order to preserve aspects of the covariate distributions of the treatment and control groups.
+Stratifying allows us to detect subgroup treatment effects that may be obscured if we only take averages over all individuals.
+Then instead of permuting treatment assignments of all individuals, we would only permute treatment assignment within strata, independently across strata.
+This corresponds to restricting the set of all possible treatment assignments to some $\mathcal{W}_S \subset \mathcal{W}$.
+We show in the next section that this conditional test is also valid. 
+
+\subsection{Hypothesis testing in observational studies}
+Suppose that instead of a randomized experiment, we observe $N$ individuals, $N_t$ of whom received the active treatment.
+We would like to test hypothesis (\ref{strongh0}) against (\ref{strongh1}).
+However, now we don't know the treatment assignment mechanism.
+In particular, the elements of $\mathcal{W}$ of may not be equally likely treatment assignments.
+We'd like to identify an ancillary statistic such that conditioning on it yields a set $\mathcal{W}_S$ where the elements are all equally likely. 
+Assumption~\ref{assume} gives us one, namely strata of $\hat{Y}$.
+
+Suppose we've set up a stratification rule $\Psi_s$ such that $S_i = \Psi_s(X_i)$ is the stratum assignment of unit $i$.
+Once we've observed $(\mathbf{Y}, \mathbf{X})$, we can compute $\mathbf{S}$.
+Then the number of individuals in each stratum $N_1, \dots, N_S$ are fixed.
+The number of treated and control units in each stratum partition the set of possible randomizations $\mathcal{W}$.
+For each set of positive integers $\left\lbrace N_{1t}, \dots, N_{St}, N_{1c}, \dots, N_{Sc}\right\rbrace$ satisfying 
+\begin{enumerate}
+\item $N_{jt} + N_{jc} = N_j$ for all $j$ 
+\item $\sum_{j=1}^S N_{jt} = N_t$
+\item $\sum_{j=1}^S N_{jc} = N_c$
+\end{enumerate}
+
+we define the subset 
+$$\mathcal{W}_s = \left\lbrace \mathbf{T} \in \mathcal{W} \mid N_{jt} = \sum_{\substack{i: S_i = j}} T_i, ~~ N_{jc} = \sum_{\substack{i: S_i = j}} (1-T_i), ~~ N_{jt} + N_{jc} = N_j ~~ \forall j \right\rbrace$$
+
+These subsets form a partition of $\mathcal{W}$: that is, $\cap_s \mathcal{W}_s = \emptyset$ and $\cup_s \mathcal{W}_s = \mathcal{W}$.
+Conditioning on the set $\mathcal{W}_s$ of treatment assignments corresponding to the realized values of $\left\lbrace N_{1t}, \dots, N_{St}, N_{1c}, \dots, N_{Sc}\right\rbrace$,
+i.e., permuting treatment assignments within strata and independently across strata, yields a valid test.
+
+For the stratified permutation test, we use the absolute value of the difference in means within strata, averaged across strata.
+As above, we replace outcomes by their residuals, $r_i = Y_i - \hat{Y}_i$.
+The test statistic is
+$$\tau(\mathbf{r}, \mathbf{T}) =\sum_{s=1}^S  \frac{N_s}{N} \left\lvert \frac{1}{N_{st}} \sum_{\substack{i  : S_i = s\\T_i=1}} r_i - \frac{1}{N_{sc}} \sum_{\substack{i : S_i = s\\ T_i=0}} r_i \right\rvert$$
+
+In order for the stratified permutation test based on residuals, rather than outcomes, to be valid, we need exchangeability within strata.
+In addition to Assumption~\ref{assume}, we need the following stronger assumption:
+
+\begin{assumption}\label{assume2}
+$\hat{Y}$ is constant within strata. That is, for all units $i$ and $j$ with $S_i = S_j = s$, $\hat{Y}_i = \hat{Y}_j$.
+\end{assumption}
+
+\noindent We can obtain constant predictions within strata one of two ways: either by stratifying extremely finely if we have sufficient data, or
+by using a prediction rule that gives piecewise constant predictions, such as a tree-based method.\footnote{
+\citet{wager_estimation_2015} make this assumption about the leaves of their causal trees.
+In effect, their estimates are constant within leaves.
+}
+Together, Assumptions~\ref{assume} and~\ref{assume2} make the residuals exchangeable within strata.
+They imply the following:
+
+\begin{assumption}\label{assume3}
+Conditional independence between residuals and treatment given stratum assignment: $(r(1), r(0)) \independent T \mid S$.
+\end{assumption}
+
+\noindent If Assumption~\ref{assume} or ~\ref{assume2} is violated, Assumption~\ref{assume3} is sufficient to create a valid permutation test.
+
+\begin{theorem}\label{thm:permutation}
+Under Assumptions~\ref{assume} and ~\ref{assume2} or Assumption~\ref{assume3}, the stratified permutation test of residuals controls the type one error rate at level $\alpha$.
+\end{theorem}
+
+\begin{proof}
+~\\
+We follow the notation of \citet{hennessy_conditional_2015}.
+Suppose we observe treatment assignment $\mathbf{T}$ and test statistic $\tau_{obs} = \tau(\mathbf{r}, \mathbf{T})$.
+Let $p_s = \pr\left( \lvert \tau(\mathbf{r}, \mathbf{T}^*) \rvert \geq \lvert \tau_{obs} \rvert \mid \mathcal{W}_s \right)$ be the p-value of the conditional test given $\left\lbrace N_{1t}, \dots, N_{St}, N_{1c}, \dots, N_{Sc}\right\rbrace$.
+Let $U$ be a random variable with the same distribution as $ \lvert \tau(\mathbf{r}, \mathbf{T}^*) \rvert$ conditional on $\mathbf{T}^* \in \mathcal{W}_s$ and let $F_U$ be its CDF.
+
+\begin{align*}
+p_s &= \pr\left( \lvert \tau(\mathbf{r}, \mathbf{T}^*) \rvert \geq \lvert \tau_{obs} \rvert \mid \mathbf{T}^* \in \mathcal{W}_s \right) \\
+&= 1- F_U(\lvert \tau_{obs} \rvert) \\
+&= 1- F_U(\lvert \tau(\mathbf{r}, \mathbf{T}) \rvert) \tag*{by definition of $\tau_{obs}$}
+\end{align*}
+
+\noindent $p_s$ has a distribution over all possible randomizations $\mathbf{T} \in \mathcal{W}_S$.
+Since all elements $\mathbf{T}^*$ are equally likely under the assumption(s), 
+\begin{align*}
+p_s &\stackrel{d}{=} 1- F_U(\lvert \tau(\mathbf{r}, \mathbf{T}^*) \rvert) \\
+&\stackrel{d}{=} 1 - F_U(U) 
+\end{align*}
+Since $F_U(U)$ has a uniform distribution on $[0, 1]$, so does $p_s$.
+Therefore, $\pr(p_s \leq \alpha \mid H_0) \leq \alpha$. 
+It remains to show that the unconditional test has level no greater than $\alpha$.
+We use the law of total probability.
+\begin{align*}
+\pr(\text{reject $H_0$} \mid\mid H_0) &= \sum_{s} \pr(p_s \leq \alpha \mid \mathbf{T} \in \mathcal{W}_s\mid\mid H_0) \pr(\mathbf{T} \in \mathcal{W}_s) \\
+&\leq \sum_{s} \alpha \pr(\mathbf{T} \in \mathcal{W}_s) \\
+&= \alpha \sum_{s}  \pr(\mathbf{T} \in \mathcal{W}_s) \\
+&= \alpha
+\end{align*}
+\end{proof}
+Assumption~\ref{assume} is crucial for the conditional test to have level $\alpha$.
+The assumption that treatment assignments in $\mathcal{W}_s$ are equally likely would give the same result.\footnote{
+\citet{rosenbaum_covariance_2002} proposes a similar method for observational studies, grouping observations on their estimated propensity scores rather than predicted outcomes.
+It follows from the theorems in \citet{rosenbaum_central_1983} that the potential outcomes will be independent of treatment within groups.
+}
+Furthermore, combining Assumption~\ref{assume2} with Assumption~\ref{assume} is important when we take residuals: $\hat{Y}$ should be constant within strata so the exchangeability of $(Y(1), Y(0))$ translates to exchangeability of the residuals.
+It is unclear to what extent Assumption~\ref{assume2} may be violated before the test becomes invalid; this will be data-dependent.
+The stratified permutation test is valid for fully randomized experiments, because randomization guarantees independence between treatment and potential outcomes
+and that every treatment assignment is equally likely.
+If some individuals within a stratum are more likely than others to receive treatment (i.e., they have different propensity scores), then permuting treatments with equal probability will not estimate the correct null distribution. 
+
+
+\subsection{Empirical Results}
+\subsubsection{Constant Additive Treatment Effects}
+The first set of simulations follows the set up in Section~\ref{estimate_cate}.
+We draw 100 random $X$ values.
+Then, for each draw, we randomly generate $\epsilon$ and treatment assignments according to the procedures described in Section~\ref{estimate_cate}.
+We vary the treatment effect from $\tau=0$ (null hypothesis, no treatment effect), to $0.25$ and $0.5$.
+We compare five tests of the strong null: the usual t-test of the OLS coefficient in a regression with controls, the Wilcoxon rank sum test, 
+model-based matching with fine and coarse strata, and Rosenbaum's permutation test of residualized outcomes with no stratification.
+
+Figure~\ref{fig:test.sim.1} shows the power curves: they plot the nominal significance level against the probability of rejecting the null hypothesis.
+The top row shows results for a treatment effect of size $0$; these curves show the level of the test.
+If the test has the correct level, the curves should overlap with the dashed identity line.
+The tests appear to have the correct level when treatment assignment is random, but only OLS has the right level when treatment is correlated with $X_1$.
+The Wilcoxon rank sum test does not control for $X_1$, so it incorrectly rejects the null far more often than the nominal level.
+Aside from the Wilcoxon rank sum test, which always has high power in the correlated case, OLS tends to have the highest power.
+The residualized, unstratified test has next highest power, while the test with finest stratification has the lowest power.
+This is likely because the number of possible treatment assignments decreases as the strata become smaller, so the effect must be more extreme to detect it.
+
+Table~\ref{tab:test.sim.1} shows the actual level of the test when we reject the null hypothesis at level $0.05$.
+This is a snapshot of the first row of curves in Figure~\ref{fig:test.sim.1}.
+The results are worrisome: only OLS appears to have the correct level when treatment is correlated with $X_1$.
+These poor results suggest that Assumption~\ref{assume} is not met by the stratification chosen.
+The finest stratification improves the test level compared to the other residualized tests, but it is still higher than nominal level.
+Perhaps an even finer stratification would grant Assumption~\ref{assume}.
+
+\begin{figure}[H]
+\centering 
+\includegraphics[width=\linewidth]{Simulations/figure/combine_test_results-1} 
+\caption{Power curves for increasing constant additive treatment effects}
+\label{fig:test.sim.1}
+\end{figure}
+% latex table generated in R 3.2.0 by xtable 1.8-0 package
+% Fri Apr 29 16:48:27 2016
+\begin{table}[ht]
+\centering
+\begin{tabular}{|r|cc|cc|}
+ \multicolumn{1}{c}{} & \multicolumn{2}{c}{Random treatment assignment} & \multicolumn{2}{c}{Treatment Correlated with $X_1$} \\
+  \hline
+ & Homoskedastic & Heteroskedastic & Homoskedastic & Heteroskedastic \\ 
+   \hline
+   MM Fine Strata & 0.043 & 0.061 & 0.073 & 0.072 \\ 
+  MM Coarse Strata & 0.050 & 0.051 & 0.115 & 0.122 \\ 
+  Residualized, No Strata & 0.045 & 0.058 & 0.180 & 0.251 \\ 
+  Wilcoxon & 0.038 & 0.052 & 0.596 & 0.867 \\ 
+  OLS & 0.048 & 0.059 & 0.052 & 0.048 \\
+  \hline
+\end{tabular}
+\caption{Proportion of tests rejected at nominal level $0.05$ out of $1000$ simulations in the constant treatment effect set-up. If the true level is $0.05$, these proportions have a standard error of $0.007$.}
+\label{tab:test.sim.1}
+\end{table}
+
+
+
+\subsubsection{Heterogeneous Treatment Effects}
+We follow the set-up in Section~\ref{estimate_het_ate}.
+Again, we set the average treatment effect to be $\tau=0$ (null hypothesis, no treatment effect), $0.25$, and $0.5$.
+Figure~\ref{fig:test.sim.2} shows the power curves.
+Unlike in the previous section, OLS does not always dominate.
+In fact, the residualization with no strata and the coarse strata tests appear neck-in-neck with OLS.
+However, only the finely stratified model-based matching test has the correct level when treatment is correlated with $X_1$, 
+as shown in the top row of plots in Figure~\ref{fig:test.sim.2} and in Table~\ref{tab:test.sim.2}.
+
+\begin{figure}[H]
+\centering 
+\includegraphics[width=\linewidth]{Simulations/figure/combine_test_results_het-1} 
+\caption{Power curves for increasing magnitude heterogeneous treatment effects}
+\label{fig:test.sim.2}
+\end{figure}
+% latex table generated in R 3.2.0 by xtable 1.8-0 package
+% Fri Apr 29 16:48:27 2016
+\begin{table}[ht]
+\centering
+\begin{tabular}{|r|cc|cc|}
+ \multicolumn{1}{c}{} & \multicolumn{2}{c}{Random treatment assignment} & \multicolumn{2}{c}{Treatment Correlated with $X_1$} \\
+  \hline
+ & Homoskedastic & Heteroskedastic & Homoskedastic & Heteroskedastic \\ 
+   \hline
+  MM Fine Strata & 0.044 & 0.053 & 0.048 & 0.083 \\ 
+  MM Coarse Strata & 0.048 & 0.049 & 0.116 & 0.127 \\ 
+  Residualized, No Strata & 0.043 & 0.047 & 0.269 & 0.312 \\ 
+  Wilcoxon & 0.052 & 0.045 & 0.631 & 0.713 \\ 
+  OLS & 0.052 & 0.043 & 0.043 & 0.044 \\ 
+  \hline
+\end{tabular}
+\caption{Proportion of tests rejected at nominal level $0.05$ out of $1000$ simulations in the heterogeneous treatment effect set-up. If the true level is $0.05$, these proportions have a standard error of $0.007$.}
+\label{tab:test.sim.2}
+\end{table}
+
+\subsubsection{Conclusions}
+The practical usefulness of this model-based matching test may be limited.
+The trade-off between type I and type II errors is unfavorable. 
+We need a fine stratification to satisfy Assumption~\ref{assume}.
+If the strata are too big, then individuals are not exchangeable, and the null distribution that we approximate by permutations within strata is wrong.
+On the other hand, we have very little power to detect an effect when strata are small.
+Figures~\ref{fig:test.sim.1} and \ref{fig:test.sim.2} show this: the orange power curve corresponding to the fine stratification test is consistently near the dashed identity line.
+
+\section{Discussion}
+We propose a two-step method for estimation and hypothesis testing of causal effects.
+Both steps rely on predicting the prognostic score of all individuals.
+The prognostic score has nice properties: in particular, \citet{hansen_prognostic_2008} shows that it is a balancing score.
+Thus, stratifying on the estimated control outcome approximates a random experiment within strata, conditional on Assumption~\ref{assume}.
+Additionally, subtracting the predicted control outcome from the observed outcome reduces variation in outcomes that comes from covariates.
+Thus, the two-step procedure of residualizing and stratifying may improve both bias and variance in estimation, and with additional assumptions may render a permutation test possible for observational data.
+
+The key benefit of this method is that it may be less sensitive to non-robust data and better able to pick up on heterogeneous treatment effects.
+We'd hope that this method would work better than propensity score matching when there is limited overlap in covariates which predict treatment, but there is sufficient overlap in covariates that predict prognostic scores.
+This way, we may bypass the classical framework of \citet{rosenbaum_central_1983}; this is a different philosophical way to think of observational studies.
+In addition, the proposed method improves upon existing methods by eliminating the need for parametric assumptions such as Gaussianity, homoscedastic errors, linearity, and constant treatment effects.  
+Furthermore, the method for hypothesis testing is fully generalizable to any form of treatment and outcome.
+We focus on the case of binary treatment and continuous outcomes in this paper.
+A more general version of the method has been applied in a study of the effect of packstock use on an endangered toad population in Yosemite National Park (\citet{matchett_detecting_2015}),
+using correlation between treatment intensity and a continuous outcome.
+By choosing an appropriate test statistic, the test is customizable to any type of data.
+
+Ideally, we'd like this framework to relate estimation and testing in a clear way.
+It doesn't.
+The first issue arises from the residuals.
+To estimate the ATE, we must use a function $\hat{f}(X) = \hat{Y}$ which predicts the outcome under control.
+One should estimate $\hat{f}$ using controls only.
+On the other hand, for hypothesis testing, we must estimate $\hat{f}$ using both treated and controls. 
+Appendix Section~\ref{fitting_method} works through an example to illustrate why this is the case.
+In short, fitting to controls ensures that no treatment effect enters into the prediction and allows us to estimate the full magnitude of the effect,
+while fitting to both treated and controls captures some correlation between treatment and covariates that allows for a fair comparison of residuals between the two groups.
+
+The stratification also complicates the relation between testing and estimation.
+Matching estimators are non-smooth and nonlinear, making it difficult to find their distribution in finite samples.
+Typically, one approximates complex distributions using asymptotic arguments or by bootstrapping.
+For instance, \citet{abadie_large_2006} derive the asymptotic distribution of a matching estimator of the average treatment effect on the treated (ATT) for the purpose of making confidence intervals,
+while \citet{abadie_failure_2008} show that the bootstrap fails to correctly estimate the variance of matching estimators in finite samples, making bootstrap confidence intervals invalid.
+Instead of relying on asymptotics, one may use test inversion to create confidence intervals.
+However, there is no clear way to invert a stratified permutation test.
+To do so, one must assume some functional form of the treatment effect, which may vary in complicated ways across strata.
+
+Both the estimator and hypothesis tests rely on the strong assumption that potential outcomes are independent of treatment assignment within strata.
+Under this assumption, it is as though each stratum approximates a randomized experiment.
+However, this requires us to identify the ``correct'' stratification.
+In our simulations, we simply stratified by quantiles of the observed $\hat{Y}$ and this appeared to work poorly.
+Furthermore, this assumption hinges on ``selection on observables,'' or incorporating all true confounding variables.
+In practice, this is an untestable assumption.
+More work should be done to study strata selection methods and to study the performance of this framework when the outcome model is misspecified.
+
+\newpage
+\section{Appendix}
+\subsection{Estimator}
+We prove a useful lemma before our main result.
+
+\begin{lemma}\label{lemma:expectation_treated}
+If $(Y(1), Y(0)) \independent T \mid S$ and treatment is assigned independently across units within stratum $s$, then 
+$$\ex\left( \frac{T_i}{N_{st}} \mid S_i =s, \sum_{i}\ind{(S_i = s)} = N_s\right) = \frac{1}{N_s}$$
+Similarly, $\ex\left(\frac{1-T_i}{N_{sc}} \mid S_i = s, \sum_{i}\ind{(S_i = s)} = N_s\right) = \frac{1}{N_s}$.
+\end{lemma}
+
+\begin{proof}
+\begingroup
+\addtolength{\jot}{-0.5em}
+\begin{align*}
+\ex\left( \frac{T_i}{N_{st}} \mid S_i = s, \sum_{i}\ind{(S_i = s)} = N_s \right) &= \ex\left( \frac{1}{N_{st}} \ex(T_i \mid N_{st}, S_i = s, \sum_{i}\ind{(S_i = s)} = N_s) \right) \\
+&= \ex\left( \frac{1}{N_{st}} \frac{N_{st}}{N_s}\right) \\
+&= \frac{1}{N_s}
+\end{align*}
+\endgroup
+\end{proof}
+
+\noindent We use the previous lemma to prove the main result:
+
+\begin{proof}[Proof of Theorem~\ref{thm:tau_hat_adjusted_unbiased}]
+Conditional on $N_1, \dots, N_S$ we have
+\begin{align*}
+\ex(\hat{\tau}^{strat}) &= \ex\left[ \sum_{s=1}^{S} \frac{N_s}{N}\left( \frac{1}{N_{st}} \sum_{i: T_i=1, S_i=s} (Y_i - \hat{Y}_i) - \frac{1}{N_{sc}} \sum_{i: T_i=0, S_i=s} (Y_i - \hat{Y}_i)\right) \right] \\
+&= \ex\left[ \sum_{s=1}^{S} \frac{N_s}{N}\left( \frac{1}{N_s} \sum_{i: S_i=s} \frac{T_i(Y_i(1) - \hat{Y}_i)}{N_{st}/N_s} - \frac{(1-T_i)(Y_i(0) - \hat{Y}_i)}{N_{sc}/N_s}\right) \right] \\
+&=\ex\left[  \sum_{s=1}^{S} \frac{1}{N}\left( \sum_{i: S_i=s} \ex\left(\frac{T_i}{N_{st}/N_s} \mid S_i = s\right)\ex(Y_i(1) - \hat{Y}_i \mid S_i=s) \right.\right. \\
+& \qquad\left.\left. - \ex\left(\frac{1-T_i}{N_{sc}/N_s} \mid S_i=s\right)\ex(Y_i(0) - \hat{Y}_i \mid S_i=s) \right) \right] \\
+&= \ex\left[ \sum_{s=1}^{S} \frac{1}{N}\left( \sum_{i: S_i=s} \frac{1/N_s}{1/N_s}\ex(Y_i(1) - \hat{Y}_i \mid S_i=s) - \frac{1/N_s}{1/N_s}\ex(Y_i(0) - \hat{Y}_i \mid S_i=s)\right)\right] \\
+&= \ex\left[ \sum_{s=1}^{S} \frac{1}{N}\left( \sum_{i: S_i=s} \ex(Y_i(1) - \hat{Y}_i \mid S_i=s) - \ex(Y_i(0) - \hat{Y}_i \mid S_i=s)\right)\right] \\
+&= \ex\left[ \frac{1}{N}\sum_{i=1}^N \ex\left(Y_i(1)- Y_i(0) \mid S_i =s \right)\right] \\
+&= ATE
+\end{align*}
+Then, taking expectations with respect to $N_1, \dots, N_S$, we have that $\ex(\hat{\tau}^{strat}) = ATE$ unconditionally as well.
+\end{proof}
+
+
+\begin{proof}[Proof of Theorem~\ref{thm:var_tau_hat_adjusted}]
+Define $r_i = Y_i - \hat{Y}_i$ to be the observed residualized outcome in the sample.  We rewrite the estimator as
+
+$$\hat{\tau}^{adj} = \overline{r_t} - \overline{r_c}$$
+
+\noindent where $\overline{r_t}$ and $\overline{r_c}$ are the average residualized outcomes in the treatment and control groups, respectively.  The residualized potential outcomes are then defined as $r_i(1) = Y_i(1) - \hat{Y}_i$ and $r_i(0) = Y_i(0) - \hat{Y}_i$.  Let $\overline{r_i(1)}$ and $\overline{r_i(0)}$ be the average residualized potential outcomes in the sample and $\overline{R_i(1)}$ and $\overline{R_i(0)}$ be the analogous population quantities: that is, $\ex_{SP}(r_i(1)) = \overline{R_i(1)}$ and $\ex_{SP}(r_i(0)) = \overline{R_i(0)}$.
+
+
+\begin{align*}
+\var(\hat{\tau}^{adj}) &= \var\left( \overline{r_t} - \overline{r_c} \right) \\
+&= \ex\left[ \left(  \overline{r_t} - \overline{r_c} - \ex_{SP}\left[ r(1) - r(0) \right] \right)^2 \right] \\
+&= \ex\left[ \left(  \overline{r_t} - \overline{r_c} - \left(\overline{r(1)} - \overline{r(0)}\right) + \left(\overline{r(1)} - \overline{r(0)}\right) -  \ex_{SP}\left[ r(1) - r(0) \right] \right)^2 \right] \\
+&= \ex\left[  \left(  \overline{r_t} - \overline{r_c} - \left(\overline{r(1)} - \overline{r(0)}\right) \right)^2\right] + \ex\left[ \left( \left(\overline{r(1)} - \overline{r(0)}\right) -  \ex_{SP}\left[ r(1) - r(0) \right] \right)^2 \right] \\
+&\qquad\qquad + 2 \ex\left[  \left(  \overline{r_t} - \overline{r_c} - (\overline{r(1)} - \overline{r(0)}) \right)\left( (\overline{r(1)} - \overline{r(0)}) -  \ex_{SP}\left[ r(1) - r(0) \right] \right) \right]
+\end{align*}
+
+Note that the expectations above are taken over both the random sampling from the superpopulation and the random assignment of treatments.  The third term is zero because, after conditioning on the observed $r_1(1), \dots, r_N(1), r_1(0), \dots, r_N(0)$, the expected value of the first factor is $0$. 
+
+The first term simplifies to
+
+\begin{align*}
+\ex\left[  \left(  \overline{r_t} - \overline{r_c} - \left(\overline{r(1)} - \overline{r(0)}\right) \right)^2\right]  &= \ex\left[  \left(  (\overline{r_t} - \overline{r(1)} )- ( \overline{r_c} -  \overline{r(0)}) \right)^2\right] \\
+&= \ex\left[   (\overline{r_t} - \overline{r(1)} )^2 \right] +  \ex\left[ ( \overline{r_c} -  \overline{r(0)} )^2\right]  - 2 \ex\left[ (\overline{r_t} - \overline{r(1)} ) ( \overline{r_c} -  \overline{r(0)}) )\right] \\
+&= \frac{\var(r(1))}{N_t} + \frac{\var(r(0))}{N_c} - \frac{\var(r(1) - r(0))}{N}
+\end{align*}
+
+\noindent by finite sample results (\cite{imbens_causal_2015}).  The second term is simply the variance of the difference in means of all potential outcomes.  Thus, by definition
+
+$$ \ex\left[ \left( (\overline{r(1)} - \overline{r(0)}) -  \ex_{SP}\left[ r(1) - r(0) \right] \right)^2 \right] = \frac{\var(r(1) - r(0))}{N}$$
+
+\noindent Combining the three terms gives
+
+\begin{equation}\label{eqn:tau_hat_adj_unsimplified}
+\var(\hat{\tau}^{adj}) =\frac{\var(r(1))}{N_t} + \frac{\var(r(0))}{N_c}
+\end{equation}x
+
+\noindent In terms of known quantities:
+
+\begin{align*}
+\var(r(1)) &= \var(Y(1) - \hat{Y}) \\
+&= \var(Y(1)) + \var(\hat{Y}) - 2\cov(Y(1), \hat{Y}) \\
+&= \sigma_1^2 + \nu^2 - 2 \rho_1 \sigma_1 \nu
+\end{align*}
+
+\noindent where $\nu^2 := \var(\hat{Y})$ and $\rho_1$ is the correlation between $Y(1)$ and $\hat{Y}$.
+This expression can be rearranged as
+\begin{align*}
+\var(r(1)) &= (\sigma_1 - \nu)^2 - 2(1-\rho_1)\sigma_1\nu
+\end{align*}
+
+\noindent Similarly,
+
+\begin{equation*}
+\var(r(0)) =  (\sigma_0 - \nu)^2 - 2(1-\rho_0)\sigma_0\nu
+\end{equation*}
+\noindent where $\rho_0$ is the correlation between $Y(0)$ and $\hat{Y}$. Plugging these expressions into equation~\ref{eqn:tau_hat_adj_unsimplified} gives the desired result.
+\end{proof}
+
+
+
+
+\begin{proof}[Proof of Theorem~\ref{thm:var_tau_hat_stratified}]
+The stratified estimator variance can be written
+\beq\label{eqn:var_tau_hat_strat}
+\var\left(\hat{\tau}^{strat}\right) = \sum_{s=1}^S \frac{N_s^2}{N^2} \var(\hat{\tau}_s) + 2\sum_{s=1}^{S-1}\sum_{r=s+1}^{S} \frac{N_rN_s}{N^2}\cov(\hat{\tau}_r, \hat{\tau}_s) 
+\eeq
+
+\noindent If $\var(\hat{\tau}_s) \leq \var(\hat{\tau}^{adj})$ for all $s$,
+then\footnote{
+This assumption is plausible, since we hope that outcomes are less variable within strata than across strata.}
+
+\begin{align*}
+ \sum_{s=1}^S \frac{N_s^2}{N^2} \var(\hat{\tau}_s) &\leq  \sum_{s=1}^S \frac{N_s^2}{N^2} \var(\hat{\tau}^{adj}) \\
+ &\leq \var(\hat{\tau}^{adj}) \left( \sum_{s=1}^S \frac{N_s}{N} \right)^2 \tag*{by Jensen's inequality} \\
+ &= \var(\hat{\tau}^{adj})
+\end{align*} 
+
+\noindent Now, for any strata $r$ and $s$,
+
+\beq
+\cov(\hat{\tau}_r, \hat{\tau}_s) = \cov\left( \frac{1}{N_{rt}} \sum_{i: S_i = r} T_i r_i - \frac{1}{N_{rc}} \sum_{i: S_i = r} (1-T_i)r_i , \frac{1}{N_{st}} \sum_{i: S_i = s} T_i r_i - \frac{1}{N_{sc}} \sum_{i: S_i = s} (1-T_i)r_i \right) \\
+\eeq
+
+\noindent Let's focus on the first term.
+The remaining three may be simplified similarly.
+
+\begin{align*}
+\cov\left( \frac{1}{N_{rt}} \sum_{i: S_i = r} T_i r_i, \frac{1}{N_{st}} \sum_{i: S_i = s} T_i r_i \right) &= 
+\ex\left( \frac{1}{N_{rt}N_{st}} \sum_{i : S_i=r}\sum_{j : S_j = s} T_i T_j r_i r_j \right) - \\
+&\qquad \ex\left(  \frac{1}{N_{rt}} \sum_{i: S_i = r} T_i r_i\right) \ex\left(  \frac{1}{N_{st}} \sum_{i: S_i = s} T_i r_i \right) \\
+&=  \frac{1}{N_{rt}N_{st}} \sum_{i : S_i=r}\sum_{j : S_j = s} \ex(T_i T_j)r_i r_j  - \\
+& \qquad \frac{1}{N_{rt}N_{st}} \left(\sum_{i : S_i=r}\ex(T_i)r_i \right)\left(\sum_{j : S_j=s}\ex(T_j)r_j\right) \\
+&=  \frac{N_t(N_t - 1)}{N(N-1)N_{rt}N_{st}} \sum_{i : S_i=r}\sum_{j : S_j = s}  r_i r_j  -  \frac{N_t^2}{N^2N_{rt}N_{st}} \left(\sum_{i : S_i=r}r_i \right)\left(\sum_{j : S_j=s}r_j\right) \\
+&=  \frac{N_t(N_t - 1)}{N(N-1)}\overline{r_r(1)}~\overline{r_s(1)}  -  \frac{N_t^2}{N^2} \overline{r_r(1)}~\overline{r_s(1)} \\
+&= -\frac{N_tN_c}{N^2(N-1)} \overline{r_r(1)}~\overline{r_s(1)}
+\end{align*}
+
+\noindent Thus,
+\begin{align*}
+\cov(\hat{\tau}_r, \hat{\tau}_s) &= -\frac{N_tN_c}{N^2(N-1)} \left[\overline{r_r(1)}~\overline{r_s(1)} + \overline{r_r(1)}~\overline{r_s(0)} + \overline{r_r(0)}~\overline{r_s(1)} + \overline{r_r(0)}~\overline{r_s(0)} \right]
+\\
+&=  -\frac{N_tN_c}{N^2(N-1)} \left( \overline{r_r(1)} + \overline{r_r(0)}\right)\left(\overline{r_s(1)} + \overline{r_s(0)}\right)
+\end{align*}
+%This quantity is negative whenever $\left(\overline{r_r(1)} + \overline{r_r(0)}\right) \left( \overline{r_s(1)} + \overline{r_s(0)}\right) > 0$.
+%Intuitively, this means that residuals in the two strata tend to have the same sign.
+
+\noindent The second term of Equation~\ref{eqn:var_tau_hat_strat} is negative if
+
+\begin{align*}
+0 &> 2\sum_{s=1}^{S-1}\sum_{r=s+1}^S \frac{N_rN_s}{N^2}\cov(\hat{\tau}_r, \hat{\tau}_s) \\
+&> 2\sum_{s=1}^{S-1}\sum_{r=s+1}^S \frac{N_rN_s}{N^2} \left(  -\frac{N_tN_c}{N^2(N-1)} \left( \overline{r_r(1)} + \overline{r_r(0)}\right)\left(\overline{r_s(1)} + \overline{r_s(0)}\right)\right) \\
+0 &< 2\sum_{s=1}^{S-1}\sum_{r=s+1}^S N_rN_s  \left( \overline{r_r(1)} + \overline{r_r(0)}\right)\left(\overline{r_s(1)} + \overline{r_s(0)}\right) \\
+&= \sum_{s=1}^S\sum_{r = 1}^S N_rN_s  \left( \overline{r_r(1)} + \overline{r_r(0)}\right)\left(\overline{r_s(1)} + \overline{r_s(0)}\right) - \sum_{s=1}^S N_s^2\left(\overline{r_s(1)} + \overline{r_s(0)}\right)^2 \\
+&= \left[ \sum_{s=1}^S N_s\left(\overline{r_s(1)} + \overline{r_s(0)}\right)\right]^2 - \sum_{s=1}^S \left[ N_s\left(\overline{r_s(1)} + \overline{r_s(0)}\right)\right]^2 \\
+&= \var_s \left( N_s\left(\overline{r_s(1)} + \overline{r_s(0)}\right) \right)
+\end{align*}
+This is the variance across strata of the function $N_s\left(\overline{r_s(1)} + \overline{r_s(0)}\right)$.
+Since variance is always non-negative, the statement is always true.
+Therefore, the second term of Equation~\ref{eqn:var_tau_hat_strat} is always negative, so
+
+$$\var\left(\hat{\tau}^{strat}\right) \leq \sum_{s=1}^S \frac{N_s^2}{N^2} \var(\hat{\tau}_s) \leq \var(\hat{\tau}^{adj})$$
+
+
+
+
+
+\end{proof}
+
+
+\include{Notes/fitting-final}
+\bibliographystyle{plainnat}
+\bibliography{refs}
+
+
+
+\end{document}
