@@ -130,6 +130,10 @@ permu_test_mean <- function(strata, prediction, treatment, response, iters=1000,
   if(length(prediction) == 1){prediction <- rep(prediction, length(treatment))}
   if(length(response) == 1){response <- rep(response, length(treatment))}
 
+  # Get rid of strata with only one type of treatment
+  remove <- sapply(strata, function(x) all(x[,"treatment"] - x[1,"treatment"] == 0))
+  strata <- strata[!remove]
+
   truth <- sum(abs(within_group_mean_cpp(strata, prediction, response)))/GG
   response_shift <- response - shift*treatment
   perm_groups <- strata
